@@ -32,7 +32,8 @@ local identifier_start = {
 }
 
 -- Represents any acceptable identifier start token
-local identifiers = {["-"]=1}
+local identifiers = {["-"]=1, ["0"]=1, ["1"]=1, ["2"]=1, ["3"]=1, ["4"]=1,
+  ["5"]=1, ["6"]=1, ["7"]=1, ["8"]=1, ["9"]=1}
 for k, v in pairs(identifier_start) do
   identifiers[k] = v
 end
