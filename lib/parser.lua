@@ -291,6 +291,7 @@ function Parser:_parse_wildcard_array (left)
   }
 end
 
+-- Parses both normal index access and slice access
 function Parser:_parse_array_index_expr ()
   local match_next = {number=true, colon=true, rbracket=true}
 
