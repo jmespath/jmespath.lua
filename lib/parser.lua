@@ -30,7 +30,7 @@ local current_node = {["type"]="current"}
 local Parser = {}
 
 function Parser:create(config)
-	config = config or {}
+  config = config or {}
   if not config.lexer then
     config.lexer = require("lexer")
   end
@@ -39,26 +39,26 @@ function Parser:create(config)
 end
 
 function Parser:parse(expression)
-	self.tokens = self.lexer(expression)
-	local ast = self:_expr(0)
+  self.tokens = self.lexer(expression)
+  local ast = self:_expr(0)
 
-	if self.tokens.cur.type ~= "eof" then
-		self:_throw("Encountered an unexpected '" .. self.tokens.cur.type
-			.. "' token and did not reach the end of the token stream.")
-	end
+  if self.tokens.cur.type ~= "eof" then
+    self:_throw("Encountered an unexpected '" .. self.tokens.cur.type
+      .. "' token and did not reach the end of the token stream.")
+  end
 
-	return ast
+  return ast
 end
 
 function Parser:_expr(rbp)
-	rbp = rbp or 0
-	left = self["_nud_" .. self.tokens.cur.type](self)
-	while rbp < bp[self.tokens.cur.type] do
-		local meth = "_led_" .. self.tokens.cur.type
-		if not self[meth] then
-			self:_throw("Invalid token " .. meth)
-		end
-		left = self[meth](self, left)
+  rbp = rbp or 0
+  left = self["_nud_" .. self.tokens.cur.type](self)
+  while rbp < bp[self.tokens.cur.type] do
+    local meth = "_led_" .. self.tokens.cur.type
+    if not self[meth] then
+      self:_throw("Invalid token " .. meth)
+    end
+    left = self[meth](self, left)
   end
   return left
 end
@@ -73,7 +73,7 @@ function Parser:_nud_quoted_identifier()
   token = self.tokens.cur
   self.tokens:next()
   if self.tokens.token.type == "lparen" then
-  	self:_throw("Quoted identifiers are not allowed for function names")
+    self:_throw("Quoted identifiers are not allowed for function names")
   end
   return {["type"]="field", ["key"]=token.value}
 end
@@ -84,25 +84,25 @@ function Parser:_nud_current()
 end
 
 function Parser:_nud_literal()
-	local token = self.tokens.cur
-	self.tokens:next()
+  local token = self.tokens.cur
+  self.tokens:next()
   return {["type"]="literal", ["value"]=token.value}
 end
 
 function Parser:_nud_expref()
-	self.tokens:next()
-	return {["type"]="expref", ["children"]={self:_expr(2)}}
+  self.tokens:next()
+  return {["type"]="expref", ["children"]={self:_expr(2)}}
 end
 
 function Parser:_nud_lbrace()
-	local valid = {quoted_identifier=true, identifier=true}
-	local valid_colon = {colon=true}
-	local kvp = {}
+  local valid = {quoted_identifier=true, identifier=true}
+  local valid_colon = {colon=true}
+  local kvp = {}
 
-	self.tokens:next(valid)
+  self.tokens:next(valid)
 
   while true do
-  	local key = self.tokens.cur.value
+    local key = self.tokens.cur.value
     self.tokens:next(valid_colon)
     self.tokens:next()
     kvp[#kvp + 1] = {
@@ -110,9 +110,9 @@ function Parser:_nud_lbrace()
       ["key"]      = key,
       ["children"] = {self:_expr()}
     }
-  	if self.tokens.cur.type == "comma" then
-      self.tokens:next(valid) 
-  	end
+    if self.tokens.cur.type == "comma" then
+      self.tokens:next(valid)
+    end
     if self.tokens.cur.type == 'rbrace' then break end
   end
 
@@ -122,41 +122,41 @@ function Parser:_nud_lbrace()
 end
 
 function Parser:_nud_flatten()
-	return self:_led_flatten(current_node)
+  return self:_led_flatten(current_node)
 end
 
 function Parser:_nud_filter()
-	return self:_led_filter(current_node)
+  return self:_led_filter(current_node)
 end
 
 function Parser:_nud_star()
-	return self:_parse_wildcard_object(current_node)
+  return self:_parse_wildcard_object(current_node)
 end
 
 function Parser:_nud_lbracket()
-	self.tokens:next()
-	local t = self.tokens.cur.type
+  self.tokens:next()
+  local t = self.tokens.cur.type
   if t == "number" or t == "colon" then
     return self:_parse_array_index_expr()
   end
 
   -- Try to parse a star, and if it fails, backtrack
   if t == "star" then
-  	self.tokens:mark()
-  	local result, err = pcall(self:_parse_wildcard_array())
-  	if not err then
-  		self.tokens:unmark()
-  		return result
-  	end
-  	self.tokens:backtrack()
+    self.tokens:mark()
+    local result, err = pcall(self:_parse_wildcard_array())
+    if not err then
+      self.tokens:unmark()
+      return result
+    end
+    self.tokens:backtrack()
   end
 
   return self:_parse_multi_select_list()
 end
 
 function Parser:_led_lbracket(left)
-	local next_types = {number=true, colon=true, star=true}
-	self.tokens:next(next_types)
+  local next_types = {number=true, colon=true, star=true}
+  self.tokens:next(next_types)
   local t = self.tokens.cur.type
   if t == "number" or t == "colon" then
       return {
@@ -168,7 +168,7 @@ function Parser:_led_lbracket(left)
 end
 
 function Parser:_led_flatten(left)
-	self.tokens:next()
+  self.tokens:next()
   return {
     ["type"]="projection",
     ["from"]="array",
@@ -180,27 +180,27 @@ function Parser:_led_flatten(left)
 end
 
 function Parser:_led_or(left)
-	self.tokens:next()
-	return {["type"]="or", ["children"]={left, self:_expr(bp["or"])}}
+  self.tokens:next()
+  return {["type"]="or", ["children"]={left, self:_expr(bp["or"])}}
 end
 
 function Parser:_led_pipe(left)
-	self.tokens:next()
-	return {["type"]="pipe", ["children"]={left, self:_expr(bp.pipe)}}
+  self.tokens:next()
+  return {["type"]="pipe", ["children"]={left, self:_expr(bp.pipe)}}
 end
 
 function Parser:_led_lparen(left)
   local args = {}
   local name = left.key
   self.tokens:next()
-  
+
   while self.tokens.cur.type ~= "rparen" do
-  	args[#args + 1] = self:_expr(0)
-  	if self.tokens.cur.type == "comma" then
-  		self.tokens:next()
-  	end
+    args[#args + 1] = self:_expr(0)
+    if self.tokens.cur.type == "comma" then
+      self.tokens:next()
+    end
   end
-  
+
   self.tokens:next()
   return {["type"]="function", ["fn"]=name, ["children"]=args}
 end
@@ -209,27 +209,27 @@ function Parser:_led_filter(left)
   self.tokens:next()
   local expression = self:_expr()
   if self.tokens.cur.type ~= "rbracket" then
-  	self:_throw("Expected a closing rbracket for the filter")
+    self:_throw("Expected a closing rbracket for the filter")
   end
-        
+
   self.tokens:next()
   local rhs = self:_parse_projection(bp.filter)
 
-	return {
-		["type"]="projection",
-		["from"]="array",
-		["children"]={
-			left or current_node,
-			{
-			  ["type"]="condition", 
-			  ["children"]={expression, rhs}
-			}
-		}
+  return {
+    ["type"]="projection",
+    ["from"]="array",
+    ["children"]={
+      left or current_node,
+      {
+        ["type"]="condition",
+        ["children"]={expression, rhs}
+      }
+    }
   }
 end
 
 function Parser:_led_comparator(left)
-	local token = self.tokens.cur
+  local token = self.tokens.cur
   self.tokens:next()
   return {
     ["type"]="comparator",
@@ -240,28 +240,28 @@ end
 
 function Parser:_led_dot(left)
   self.tokens:next()
-	return {
-	    type     = "subexpression",
-	    children = {left, self:_parse_dot(bp.dot)}
-	}
+  return {
+      type     = "subexpression",
+      children = {left, self:_parse_dot(bp.dot)}
+  }
 end
 
 function Parser:_parse_projection(rbp)
-	local t = self.tokens.cur.type
-	if bp[t] < 10 then
-		return current_node
-	elseif t == "dot" then
-		self.tokens:next(after_dot)
-		return self:_parse_dot(rbp)
-	elseif t == "lbracket" then
-		return self:expr(rbp)
-	else
-		self:_throw("Syntax error after projection")
-	end
+  local t = self.tokens.cur.type
+  if bp[t] < 10 then
+    return current_node
+  elseif t == "dot" then
+    self.tokens:next(after_dot)
+    return self:_parse_dot(rbp)
+  elseif t == "lbracket" then
+    return self:expr(rbp)
+  else
+    self:_throw("Syntax error after projection")
+  end
 end
 
 function Parser:_parse_wildcard_object(left)
-	self.tokens:next()
+  self.tokens:next()
   return {
     ["type"] = "projection",
     ["from"] = "object",
@@ -284,7 +284,7 @@ function Parser:_parse_array_index_expr()
 
   local pos = 1
   local parts = {false, false, false}
-  
+
   while true do
     if self.tokens.cur.type == "colon" then
       pos = pos + 1
@@ -304,7 +304,7 @@ function Parser:_parse_array_index_expr()
   end
 
   if pos > 3 then
-  	self:_throw("Invalid array slice syntax: too many colons")
+    self:_throw("Invalid array slice syntax: too many colons")
   end
 
   -- Sliced array from start (e.g., [2:])
@@ -315,14 +315,14 @@ function Parser:_parse_multi_select_list()
   local nodes = {}
 
   while true do
-  	nodes[#nodes + 1] = self:_expr()
-  	if self.tokens.cur.type == "comma" then
-  		self.tokens:next()
-  		if self.tokens.cur.type == "rbracket" then
+    nodes[#nodes + 1] = self:_expr()
+    if self.tokens.cur.type == "comma" then
+      self.tokens:next()
+      if self.tokens.cur.type == "rbracket" then
         self:_throw("Expected expression, found rbracket")
       end
-  	end
-  	if self.tokens.cur.type == "rbracket" then break end
+    end
+    if self.tokens.cur.type == "rbracket" then break end
   end
 
   self.tokens:next()
@@ -331,14 +331,14 @@ end
 
 function Parser:_parse_dot(rbp)
   if self.tokens.cur.type ~= "lbracket" then
-  	return self:_expr(rbp)
+    return self:_expr(rbp)
   end
   self.tokens:next()
   return self:_parse_multi_select_list()
 end
 
 function Parser:_throw(msg)
-	error(msg)
+  error(msg)
 end
 
 return Parser

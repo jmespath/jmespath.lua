@@ -174,7 +174,7 @@ function Lexer:consume_operator()
 
   if self.c == "=" then
     self:consume()
-    token.value = token.value .. "=" 
+    token.value = token.value .. "="
   elseif token.value == "=" then
     error("Expected ==, got =")
   end
@@ -218,22 +218,22 @@ return function(expression)
     tokens = tokens,
     next = function(self, valid)
       pos = pos + 1
-      if pos > #self.tokens then 
-        pos = #self.tokens 
+      if pos > #self.tokens then
+        pos = #self.tokens
         self.cur = {pos=pos, type="eof"}
       else
         self.cur = self.tokens[pos]
       end
       if valid and not valid[self.cur.type] then
-        error("Syntax error at " .. pos .. ". Found " 
-          .. self.cur.type .. " but expected one of: " 
+        error("Syntax error at " .. pos .. ". Found "
+          .. self.cur.type .. " but expected one of: "
           .. table.concat(table_keys(valid), ", "))
       end
     end,
-    mark = function(self) 
-      self.mark_pos = self.pos 
+    mark = function(self)
+      self.mark_pos = self.pos
     end,
-    backtrack = function(self) 
+    backtrack = function(self)
       if not self.mark then
         error("No mark position was set on the token stream")
       end
