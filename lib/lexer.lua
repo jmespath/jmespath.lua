@@ -1,9 +1,4 @@
 -- Provides tokenization of JMESPath expressions:
---
--- lexer = require("lexer")
--- for t in lexer("foo.bar") do
---   print(t.type)
--- end
 
 -- Simple, single character, tokens
 local simple_tokens = {

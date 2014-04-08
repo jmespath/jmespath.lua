@@ -1,3 +1,5 @@
+-- Interprets JMESPath ASTs
+
 local Tree = {}
 
 function Tree:visit(node, data)

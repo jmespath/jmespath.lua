@@ -1,3 +1,4 @@
+-- Implements a JMESPath Pratt parser
 
 -- Token binding precedence
 local bp = {

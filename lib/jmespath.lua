@@ -1,3 +1,5 @@
+-- Implements the main jmespath() function
+
 local Parser = require("parser")
 local interpreter = require("interpreter")
 local parser = Parser:create()
