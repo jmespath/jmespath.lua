@@ -51,7 +51,7 @@ local valid_operators = {
   ["<"]=1, [">"]=1, ["<="]=1, [">="]=1, ["!="]=1, ["=="]=1
 }
 
-local function table_keys(t)
+local function table_keys (t)
   local keys, n = {}, 0
   for k, v in pairs(t) do
     n = n + 1
@@ -63,7 +63,7 @@ end
 local Lexer = {}
 
 -- Initalizes the lexer
-function Lexer:create(expression)
+function Lexer:new (expression)
   self.expr = expression
   self.pos = 0
   self:consume()
@@ -71,7 +71,7 @@ function Lexer:create(expression)
 end
 
 -- Advances to the next token and modifies the internal state of the lexer
-function Lexer:consume()
+function Lexer:consume ()
   if self.pos == #self.expr then
     self.c = ""
   else
@@ -81,7 +81,7 @@ function Lexer:consume()
 end
 
 -- Iterates over each character in a string and yields tokens
-function Lexer:tokenize()
+function Lexer:tokenize ()
   tokens = {}
 
   while self.c ~= "" do
@@ -117,7 +117,7 @@ function Lexer:tokenize()
 end
 
 -- Yield an identifier token
-function Lexer:consume_identifier()
+function Lexer:consume_identifier ()
   local buffer = {self.c}
   local start = self.pos
   self:consume()
@@ -131,7 +131,7 @@ function Lexer:consume_identifier()
 end
 
 -- Yield a number token
-function Lexer:consume_number()
+function Lexer:consume_number ()
   local buffer = {self.c}
   local start = self.pos
   self:consume()
@@ -145,7 +145,7 @@ function Lexer:consume_number()
 end
 
 -- Yield a flatten, filter, and lbracket tokens
-function Lexer:consume_lbracket()
+function Lexer:consume_lbracket ()
   self:consume()
   if self.c == "]" then
     self:consume()
@@ -159,7 +159,7 @@ function Lexer:consume_lbracket()
 end
 
 -- Consumes an operation <, >, !, !=, ==
-function Lexer:consume_operator()
+function Lexer:consume_operator ()
   token = {
     type  = "comparator",
     pos   = self.pos,
@@ -183,7 +183,7 @@ function Lexer:consume_operator()
 end
 
 -- Consumes ors and pipes
-function Lexer:consume_pipe()
+function Lexer:consume_pipe ()
   self:consume()
   if self.c ~= "|" then
     return {type="pipe", value="|", pos=self.pos - 1};
@@ -194,18 +194,18 @@ function Lexer:consume_pipe()
 end
 
 -- Consumes a literal token
-function Lexer:consume_literal()
+function Lexer:consume_literal ()
   -- @todo
 end
 
 -- Consumes a quoted string
-function Lexer:consume_quoted_identifier()
+function Lexer:consume_quoted_identifier ()
   -- @todo
 end
 
 -- Returns a token stream table
-return function(expression)
-  local tokens = (Lexer:create(expression)):tokenize()
+return function (expression)
+  local tokens = (Lexer:new(expression)):tokenize()
   local pos = 1
   local mark_pos = 0
 
