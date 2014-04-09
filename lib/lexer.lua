@@ -60,12 +60,10 @@ local valid_operators = {
   ["<"] = 1, [">"] = 1, ["<="] = 1, [">="] = 1, ["!="] = 1, ["=="] = 1
 }
 
------------------------------------------------------------------------------
 -- Returns a sequence table that contains a list of keys from a hash table.
 --
 -- @tparam  tabke t Input table to get a list of keys from
 -- @treturn table   Returns the keys of the hash as a sequence table.
------------------------------------------------------------------------------
 local function table_keys(t)
   local keys = {}
   local n = 0
@@ -81,12 +79,10 @@ end
 -- @class Tokens stream class
 local TokenStream = {}
 
------------------------------------------------------------------------------
 -- Creates a new token stream
 --
 -- @tparam table  token Sequence of tokens returned from a lexer
 -- @tparam string expr  The expression that was parsed
------------------------------------------------------------------------------
 function TokenStream:new(tokens, expr)
   self.tokens = tokens
   self.expr = expr
@@ -96,12 +92,10 @@ function TokenStream:new(tokens, expr)
   return self
 end
 
------------------------------------------------------------------------------
 -- Moves the token stream cursor to the next token.
 --
 -- @tparam table valid An optional hash table of valid next tokens.
 -- @error  Raises an error if the next found token is not in the valid hash.
------------------------------------------------------------------------------
 function TokenStream:next(valid)
   self.pos = self.pos + 1
 
@@ -120,26 +114,20 @@ function TokenStream:next(valid)
   end
 end
 
------------------------------------------------------------------------------
 -- Marks the current position of the token stream which allows you to
 -- backtrack to the marked token in the event of a parse error.
------------------------------------------------------------------------------
 function TokenStream:mark()
   self.mark_pos = self.pos
 end
 
------------------------------------------------------------------------------
 -- Removes any previously set mark token.
------------------------------------------------------------------------------
 function TokenStream:unmark()
   self.mark_pos = 0
 end
 
------------------------------------------------------------------------------
 -- Sets the token cursor position to a previously set mark position.
 --
 -- @error Raises an error if no mark position was previously set.
------------------------------------------------------------------------------
 function TokenStream:backtrack()
   if not self.mark_pos then
     error("No mark position was set on the token stream")
@@ -151,21 +139,17 @@ end
 -- Lexer prototype class that is returned as the module
 local Lexer = {}
 
------------------------------------------------------------------------------
 -- Initalizes the lexer
 --
 -- @treturn table Returns an instance of a lexer.
------------------------------------------------------------------------------
 function Lexer:new()
   return self
 end
 
------------------------------------------------------------------------------
 -- Creates a sequence table of tokens for use in a token stream.
 --
 -- @tparam  string      Expression Expression to tokenize
 -- @treturn TokenStream Returns a stream of tokens
------------------------------------------------------------------------------
 function Lexer:tokenize(expression)
   local tokens = {}
   self.pos = 0
@@ -204,9 +188,7 @@ function Lexer:tokenize(expression)
   return TokenStream:new(tokens, expression)
 end
 
------------------------------------------------------------------------------
 -- Advances to the next token and modifies the internal state of the lexer.
------------------------------------------------------------------------------
 function Lexer:_consume()
   if self.pos == #self.expr then
     self.c = false
@@ -216,11 +198,9 @@ function Lexer:_consume()
   end
 end
 
------------------------------------------------------------------------------
 -- Consumes an identifier token /[A-Za-z0-9_\-]/
 --
 -- @treturn table Returns the identifier token
------------------------------------------------------------------------------
 function Lexer:_consume_identifier()
   local buffer = {self.c}
   local start = self.pos
@@ -234,11 +214,9 @@ function Lexer:_consume_identifier()
   return {pos = start, type = "identifier", value = table.concat(buffer)}
 end
 
------------------------------------------------------------------------------
 -- Consumes a number token /[0-9\-]/
 --
 -- @treturn table Returns the number token
------------------------------------------------------------------------------
 function Lexer:_consume_number()
   local buffer = {self.c}
   local start = self.pos
@@ -256,11 +234,9 @@ function Lexer:_consume_number()
   }
 end
 
------------------------------------------------------------------------------
 -- Consumes a flatten token, lbracket, and filter token: "[]", "[?", and "["
 --
 -- @treturn table Returns the token
------------------------------------------------------------------------------
 function Lexer:_consume_lbracket()
   self:_consume()
   if self.c == "]" then
@@ -274,11 +250,9 @@ function Lexer:_consume_lbracket()
   end
 end
 
------------------------------------------------------------------------------
 -- Consumes an operation <, >, !, !=, ==
 --
 -- @treturn table Returns the token
------------------------------------------------------------------------------
 function Lexer:_consume_operator()
   token = {
     type  = "comparator",
@@ -302,11 +276,9 @@ function Lexer:_consume_operator()
   return token
 end
 
------------------------------------------------------------------------------
 -- Consumes an or, "||", and pipe, "|" token
 --
 -- @treturn table Returns the token
------------------------------------------------------------------------------
 function Lexer:_consume_pipe()
   self:_consume()
 
@@ -319,13 +291,11 @@ function Lexer:_consume_pipe()
   return {type = "or", value = "||", pos = self.pos - 2};
 end
 
------------------------------------------------------------------------------
 -- Parse a string of tokens inside of a delimiter.
 --
 -- @param   lexer   Lexer instance
 -- @param   wrapper Wrapping character
 -- @treturn table   Returns the start of a token
------------------------------------------------------------------------------
 local function parse_inside(lexer, wrapper)
   local p = lexer.pos
   local last = "\\"
@@ -345,11 +315,9 @@ local function parse_inside(lexer, wrapper)
   return {value = table.concat(buffer), pos = p}
 end
 
------------------------------------------------------------------------------
 -- Consumes a literal token.
 --
 -- @treturn table Returns the token
------------------------------------------------------------------------------
 function Lexer:_consume_literal()
   local token = parse_inside(self, '`')
   token.type = "literal"
@@ -357,11 +325,9 @@ function Lexer:_consume_literal()
   return token
 end
 
------------------------------------------------------------------------------
 -- Consumes a quoted string.
 --
 -- @treturn table Returns the token
------------------------------------------------------------------------------
 function Lexer:_consume_quoted_identifier()
   local token = parse_inside(self, '"')
   token.type = "quoted_identifier"
