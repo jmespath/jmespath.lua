@@ -14,4 +14,18 @@ A pure Lua implementation of `JMESPath <http://jmespath.readthedocs.org/en/lates
       }
     }
 
-    print(jmespath.search("foo.baz", data))
+    local expression = "foo.baz"
+    local result = jmespath.search(expression, data)
+
+Testing
+-------
+
+jmespath.lua is tested using `busted <http://olivinelabs.com/busted>`_. You'll
+need to install busted to run the tests::
+
+    luarocks install luacov
+    luarocks install busted
+
+After installing busted, you can run the tests with the following command::
+
+    busted

@@ -1,0 +1,21 @@
+package = "jmespath"
+version = "0.1.0"
+source = {
+   url = "git://github.com/mtdowling/jmespath",
+   tag = "0.1.0",
+}
+description = {
+   summary = "Declaratively specify how to extract elements from a JSON document, in Lua",
+   homepage = "https://github.com/mtdowling/jmespath.lua",
+   license = "MIT"
+}
+dependencies = {
+   "lua >= 5.1",
+   "lua-cjson"
+}
+build = {
+   type = "builtin",
+   modules = {
+      jmespath = "lib/jmespath.lua"
+   }
+}
