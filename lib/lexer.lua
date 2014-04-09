@@ -100,11 +100,15 @@ end
 function TokenStream:next(valid)
   self.pos = self.pos + 1
 
-  if self.pos > #self.tokens then
-    self.pos = #self.tokens
-    self.cur = {pos = self.pos, type = "eof"}
-  else
+  if self.pos <= #self.tokens then
     self.cur = self.tokens[self.pos]
+  else
+    -- Use an eof token if the position is the last token.
+    self.pos = self.pos - 1
+    self.cur = {
+      pos = self.tokens[self.pos].pos + #self.tokens[self.pos].value,
+      type = "eof"
+    }
   end
 
   if valid and not valid[self.cur.type] then
