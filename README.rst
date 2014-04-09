@@ -23,9 +23,14 @@ Testing
 jmespath.lua is tested using `busted <http://olivinelabs.com/busted>`_. You'll
 need to install busted to run the tests::
 
-    luarocks install luacov
     luarocks install busted
 
-After installing busted, you can run the tests with the following command::
+You can register your cloned copy of the repository using
+`LuaRocks <http://luarocks.org/>`_::
+
+    luarocks make
+
+After installing jmespath.lua, you can run the tests with the following
+command::
 
     busted

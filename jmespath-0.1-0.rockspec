@@ -1,5 +1,5 @@
 package = "jmespath"
-version = "0.1.0"
+version = "0.1-0"
 source = {
    url = "git://github.com/mtdowling/jmespath",
    tag = "0.1.0",
@@ -16,6 +16,9 @@ dependencies = {
 build = {
    type = "builtin",
    modules = {
-      jmespath = "lib/jmespath.lua"
+      ["jmespath"] = "lib/jmespath.lua",
+      ["jmespath.lexer"] = "lib/lexer.lua",
+      ["jmespath.parser"] = "lib/parser.lua",
+      ["jmespath.interpreter"] = "lib/interpreter.lua",
    }
 }

@@ -1,7 +1,7 @@
 -- Implements the main jmespath() function
-local lexer = require "lexer"
-local interpreter = require "interpreter"
-local Parser = require "parser"
+local lexer = require "jmespath.lexer"
+local interpreter = require "jmespath.interpreter"
+local Parser = require "jmespath.parser"
 local parser = Parser:new({lexer=lexer})
 local cache = {}
 local jp = {}
