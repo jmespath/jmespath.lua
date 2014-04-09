@@ -2,6 +2,9 @@
 -- @module jmespath.lexer
 -- @alias Lexer
 
+-- JSON is needed for decoding tokens
+local json = require "dkjson"
+
 -- Simple, single character, tokens
 local simple_tokens = {
   [" "]  = "ws",
@@ -40,8 +43,8 @@ local identifiers = {
 }
 
 -- Merge the identifier start tokens into the identifiers token list
-for k, v in pairs(identifier_start) do
-  identifiers[k] = v
+for k, _ in pairs(identifier_start) do
+  identifiers[k] = true
 end
 
 -- Operator start tokens
@@ -81,10 +84,12 @@ local TokenStream = {}
 -----------------------------------------------------------------------------
 -- Creates a new token stream
 --
--- @tparam table token Sequence of tokens returned from a lexer
+-- @tparam table  token Sequence of tokens returned from a lexer
+-- @tparam string expr  The expression that was parsed
 -----------------------------------------------------------------------------
-function TokenStream:new(tokens)
+function TokenStream:new(tokens, expr)
   self.tokens = tokens
+  self.expr = expr
   self.cur = self.tokens[1]
   self.pos = 0
   self.mark_pos = 0
@@ -105,10 +110,7 @@ function TokenStream:next(valid)
   else
     -- Use an eof token if the position is the last token.
     self.pos = self.pos - 1
-    self.cur = {
-      pos = self.tokens[self.pos].pos + #self.tokens[self.pos].value,
-      type = "eof"
-    }
+    self.cur = {pos = #self.expr + 1, type = "eof"}
   end
 
   if valid and not valid[self.cur.type] then
@@ -152,7 +154,7 @@ local Lexer = {}
 -----------------------------------------------------------------------------
 -- Initalizes the lexer
 --
--- @treturn table Returns an instance of a lexer
+-- @treturn table Returns an instance of a lexer.
 -----------------------------------------------------------------------------
 function Lexer:new()
   return self
@@ -170,7 +172,7 @@ function Lexer:tokenize(expression)
   self.expr = expression
   self:_consume()
 
-  while self.c ~= "" do
+  while self.c do
     if identifier_start[self.c] then
       tokens[#tokens + 1] = self:_consume_identifier()
     elseif simple_tokens[self.c] then
@@ -199,7 +201,7 @@ function Lexer:tokenize(expression)
     end
   end
 
-  return TokenStream:new(tokens)
+  return TokenStream:new(tokens, expression)
 end
 
 -----------------------------------------------------------------------------
@@ -207,7 +209,7 @@ end
 -----------------------------------------------------------------------------
 function Lexer:_consume()
   if self.pos == #self.expr then
-    self.c = ""
+    self.c = false
   else
     self.pos = self.pos + 1
     self.c = self.expr:sub(self.pos, self.pos)
@@ -318,12 +320,41 @@ function Lexer:_consume_pipe()
 end
 
 -----------------------------------------------------------------------------
+-- Parse a string of tokens inside of a delimiter.
+--
+-- @param   lexer   Lexer instance
+-- @param   wrapper Wrapping character
+-- @treturn table   Returns the start of a token
+-----------------------------------------------------------------------------
+local function parse_inside(lexer, wrapper)
+  local p = lexer.pos
+  local last = "\\"
+  local buffer = {}
+
+  -- Consume the leading character
+  lexer:_consume()
+
+  while lexer.c and not (lexer.c == wrapper and last ~= "\\") do
+    last = lexer.c
+    buffer[#buffer + 1] = lexer.c
+    lexer:_consume()
+  end
+
+  lexer:_consume()
+
+  return {value = table.concat(buffer), pos = p}
+end
+
+-----------------------------------------------------------------------------
 -- Consumes a literal token.
 --
 -- @treturn table Returns the token
 -----------------------------------------------------------------------------
 function Lexer:_consume_literal()
-  -- @todo
+  local token = parse_inside(self, '`')
+  token.type = "literal"
+  token.value = json.decode(token.value)
+  return token
 end
 
 -----------------------------------------------------------------------------
@@ -332,7 +363,10 @@ end
 -- @treturn table Returns the token
 -----------------------------------------------------------------------------
 function Lexer:_consume_quoted_identifier()
-  -- @todo
+  local token = parse_inside(self, '"')
+  token.type = "quoted_identifier"
+  token.value = json.decode('"' .. token.value.. '"')
+  return token
 end
 
 return Lexer

@@ -115,7 +115,7 @@ function Parser:_nud_quoted_identifier()
   token = self.tokens.cur
   self.tokens:next()
 
-  if self.tokens.token.type == "lparen" then
+  if self.tokens.cur.type == "lparen" then
     self:_throw("Quoted identifiers are not allowed for function names")
   end
 

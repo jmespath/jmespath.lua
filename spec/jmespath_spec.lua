@@ -41,10 +41,7 @@ describe('jmespath', function()
     }, stream.cur)
 
     stream:next()
-    assert.are.same({
-      type = "eof",
-      pos = 8
-    }, stream.cur)
+    assert.are.same({type = "eof", pos = 8}, stream.cur)
   end)
 
 end)
