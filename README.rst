@@ -8,13 +8,8 @@ A pure Lua implementation of `JMESPath <http://jmespath.readthedocs.org/en/lates
 
     local jmespath = require "jmespath"
     
-    local data = {
-      foo = {
-        baz = "bar"
-      }
-    }
-
     local expression = "foo.baz"
+    local data = { foo = { baz = "bar" } }
     local result = jmespath.search(expression, data)
 
 Testing
