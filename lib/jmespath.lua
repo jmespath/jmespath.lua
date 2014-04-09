@@ -1,35 +1,57 @@
 -- Implements the main jmespath() function
-local lexer = require "jmespath.lexer"
-local interpreter = require "jmespath.interpreter"
-local Parser = require "jmespath.parser"
-local parser = Parser:new({lexer=lexer})
-local cache = {}
-local jp = {}
+-- @module jmespath
 
+-- Exported module table
+local M = {_VERSION = "0.1.0"}
+
+local Lexer = require "jmespath.lexer"
+local Interpreter = require "jmespath.interpreter"
+local Parser = require "jmespath.parser"
+
+-- Private module properties
+local lexer = Lexer:new()
+local parser = Parser:new({lexer=lexer})
+local interpreter = Interpreter:new()
+local cache = {}
+
+-----------------------------------------------------------------------------
 -- Searches the provided data using a JMESPath expression
--- @param string expression JMESPath expression
--- @param mixed  data       Data to search
--- @return mixed Returns the evaluated result
-function jp.search (expression, data)
-  return interpreter:visit(jp.parse(expression), data)
+--
+-- @tparam string expression JMESPath expression as a string.
+-- @param         data       Data to search. Can be any primitive or a table.
+-- @return                   Returns the evaluated result as a table, string,
+--                           nil, number, or boolean.
+-- @error                    Raises an error if the expression is invalid.
+-----------------------------------------------------------------------------
+function M.search(expression, data)
+  return interpreter:visit(M.parse(expression), data)
 end
 
--- Parses the given JMESPath expression into an AST
--- @param string expression Expression to parse
--- @return table Returns the AST as a table
-function jp.parse (expression)
+-----------------------------------------------------------------------------
+-- Parses the given JMESPath expression into an AST of tables
+--
+-- @tparam  string expression Expression to parse
+-- @treturn table  Returns the parsed result as a table of AST nodes.
+-- @error          Raises an error if the expression is invalid.
+-----------------------------------------------------------------------------
+function M.parse(expression)
   if #cache > 1024 then cache = {} end
   if not cache[expression] then
     cache[expression] = parser:parse(expression)
   end
+
   return cache[expression]
 end
 
--- Tokenizes the given JMESPath expression into a token stream
--- @param string expression JMESPath expression to tokenize
--- @return table
-function jp.tokenize (expression)
-  return lexer(expression)
+-----------------------------------------------------------------------------
+-- Parses the given JMESPath expression into a token stream table.
+--
+-- @tparam  string expression Expression to tokenize
+-- @treturn table  Returns a token stream table.
+-- @error          Raises an error if the expression is invalid.
+-----------------------------------------------------------------------------
+function M.tokenize(expression)
+  return lexer:tokenize(expression)
 end
 
-return jp
+return M
