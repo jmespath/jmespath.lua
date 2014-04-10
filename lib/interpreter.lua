@@ -137,7 +137,7 @@ function Interpreter:vist_multi_select_hash(node, data)
   local collected = {}
 
   for k, v in ipairs(node.children) do
-    collected[v.key] = self:visit(v.children[0], value)
+    collected[v.key] = self:visit(v.children[1], value)
   end
 
   return collected
@@ -149,8 +149,8 @@ end
 
 --- Returns a value if a condition evaluates to true or nil
 function Interpreter:visit_condition(node, data)
-  if self:visit(node.children[0], data) then
-    return self:visit(node.children[1], data)
+  if self:visit(node.children[1], data) then
+    return self:visit(node.children[2], data)
   end
 
   return nil
