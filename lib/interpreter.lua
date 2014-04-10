@@ -120,7 +120,7 @@ function M:visit_multi_select_list(node, data)
 end
 
 -- Returns a hash table of results
-function M:visti_multi_select_hash(node, data)
+function M:vist_multi_select_hash(node, data)
   if data == nil then return nil end
   local collected = {}
 
@@ -136,7 +136,7 @@ function M:visit_comparator(node, data)
 end
 
 -- Returns a value if a condition evaluates to true or nil
-function M:visti_condition(node, data)
+function M:visit_condition(node, data)
   if self:visit(node.children[0], data) then
     return self:visit(node.children[1], data)
   end
