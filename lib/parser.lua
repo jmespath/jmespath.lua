@@ -296,7 +296,7 @@ function Parser:_parse_projection(rbp)
     self.tokens:next(after_dot)
     return self:_parse_dot(rbp)
   elseif t == "lbracket" then
-    return self:expr(rbp)
+    return self:_expr(rbp)
   else
     self:_throw("Syntax error after projection")
   end
