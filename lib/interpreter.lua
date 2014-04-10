@@ -49,23 +49,16 @@ end
 -- the return value.
 function Interpreter:visit_projection(node, data)
   local left = self:visit(node.children[1], data)
-
+  -- The left result must be a hash or sequence.
   if type(left) ~= "table" then return nil end
-
-  -- Validates the expected type of the projection
-  if node.from and #left and(
-   (node.from == "object" and data[1] ~= nil)
-    or (node.from == "array" and data[1] == nil))
-  then
-    return nil
-  end
+  -- Validates the expected type of the projection.
+  if node.from == "object" and left[1] then return nil end
+  if node.from == "array" and not left[1] then return nil end
 
   local collected = {}
-  for _, v in pairs(left) do
-    local result = self:visit(node.children[1], v)
-    if result ~= nil then
-        collected[#collected + 1] = result
-    end
+  for _, v in ipairs(left) do
+    local result = self:visit(node.children[2], v)
+    if result ~= nil then collected[#collected + 1] = result end
   end
 
   return collected
@@ -73,6 +66,24 @@ end
 
 --- Flattens(merges) up the current node
 function Interpreter:visit_flatten(node, data)
+  local left = self:visit(node.children[1], data)
+  -- Ensure that the left result is a sequence table.
+  if type(left) ~= "table" or not #left then return nil end
+
+  local merged = {}
+  for _, v in ipairs(left) do
+    -- Only merge up sequences and scalars.
+    if type(v) ~= "table" or v[1] == nil then
+      merged[#merged + 1] = v
+    elseif #v > 0 then
+      -- Merge the sequence tables.
+      for _, j in ipairs(v) do
+        merged[#merged + 1] = j
+      end
+    end
+  end
+
+  return merged
 end
 
 --- Returns a literal value
