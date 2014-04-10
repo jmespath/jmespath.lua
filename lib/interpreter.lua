@@ -5,6 +5,11 @@
 -- Interpreter prototype
 local Interpreter = {}
 
+--- Handles invalid ast nodes.
+setmetatable(Interpreter, {
+  __index = function(self, key) error("Invalid AST node: " .. key) end
+})
+
 --- Interpreter constructor.
 -- @treturn table
 function Interpreter:new()
@@ -35,13 +40,8 @@ end
 --- Returns a specific index of the current node
 function Interpreter:visit_index(node, data)
   if type(data) ~= "table" then return nil end
-  if node.index < 0 then node.index = #data + node.index end
-
-  node.index = node.index + 1
-
-  if type(data) == "table" and data[node.index] ~= nil then
-    return data[node.index]
-  end
+  if node.index < 0 then return data[#data + node.index + 1] end
+  return data[node.index + 1]
 end
 
 --- Interprets a projection node, passing the values of the left child through
@@ -51,12 +51,18 @@ function Interpreter:visit_projection(node, data)
   local left = self:visit(node.children[1], data)
   -- The left result must be a hash or sequence.
   if type(left) ~= "table" then return nil end
-  -- Validates the expected type of the projection.
-  if node.from == "object" and left[1] then return nil end
-  if node.from == "array" and not left[1] then return nil end
+  -- Empty tables should just return the table.
+  if next(left) == nil then return left end
+
+  -- Don't perform a projection when the expected type is not what we got.
+  if node.from == "object" then
+    if #left > 0 then return nil end
+  elseif node.from == "array" and #left == 0 then
+    return nil
+  end
 
   local collected = {}
-  for _, v in ipairs(left) do
+  for _, v in pairs(left) do
     local result = self:visit(node.children[2], v)
     if result ~= nil then collected[#collected + 1] = result end
   end
@@ -67,16 +73,20 @@ end
 --- Flattens(merges) up the current node
 function Interpreter:visit_flatten(node, data)
   local left = self:visit(node.children[1], data)
-  -- Ensure that the left result is a sequence table.
-  if type(left) ~= "table" or not #left then return nil end
+  -- flatten requires that the left result returns a sequence
+  if type(left) ~= "table" then return nil end
+  -- Return if empty because we can't differentiate between an array and hash.
+  if next(left) == nil then return left end
+  -- It is not empty, so ensure that the left result is a sequence table.
+  if #left == 0 then return nil end
 
   local merged = {}
   for _, v in ipairs(left) do
-    -- Only merge up sequences and scalars.
-    if type(v) ~= "table" or v[1] == nil then
+    -- Push everything on that is not a table or is a hash.
+    if type(v) ~= "table" or (next(v) ~= nil and #v == 0) then
       merged[#merged + 1] = v
     elseif #v > 0 then
-      -- Merge the sequence tables.
+      -- Merge up sequence tables into the merged result.
       for _, j in ipairs(v) do
         merged[#merged + 1] = j
       end
@@ -91,7 +101,7 @@ function Interpreter:visit_literal(node, data)
   return node.value
 end
 
---- Returns the current node(identity node)
+--- Returns the current node (identity node)
 function Interpreter:visit_current(node, data)
   return data
 end
@@ -103,9 +113,7 @@ function Interpreter:visit_or(node, data)
   local result = self:visit(node.children[1], data)
   local t = type(result)
 
-  if result == nil or result == false or result == ""
-    or(t == "table" and #result == 0)
-  then
+  if not result or result == "" or (t == "table" and next(result) == nil) then
     result = self:visit(node.children[2], data)
   end
 
@@ -132,7 +140,7 @@ function Interpreter:visit_multi_select_list(node, data)
 end
 
 --- Returns a hash table of results
-function Interpreter:vist_multi_select_hash(node, data)
+function Interpreter:visit_multi_select_hash(node, data)
   if data == nil then return nil end
   local collected = {}
 

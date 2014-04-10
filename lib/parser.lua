@@ -89,9 +89,9 @@ end
 
 --- Parses a leading identifier token (e.g., foo)
 function Parser:_nud_identifier()
-  token = self.tokens.cur
+  local result = {type = "field", key = self.tokens.cur.value}
   self.tokens:next()
-  return {type = "field", key = token.value}
+  return result
 end
 
 --- Parses a nud quoted identifier (e.g., "foo")
@@ -178,8 +178,8 @@ function Parser:_nud_lbracket()
   -- Try to parse a star, and if it fails, backtrack
   if t == "star" then
     self.tokens:mark()
-    local result, err = pcall(self:_parse_wildcard_array())
-    if not err then
+    local status, result = pcall(Parser._parse_wildcard_array, self)
+    if status then
       self.tokens:unmark()
       return result
     end
@@ -316,7 +316,6 @@ end
 function Parser:_parse_wildcard_array(left)
   self.tokens:next({rbracket = true})
   self.tokens:next()
-
   return {
     type     = "projection",
     from     = "array",

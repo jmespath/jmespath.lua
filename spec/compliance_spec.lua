@@ -22,11 +22,15 @@ describe('compliance', function()
         local name = string.format("%s from %s (Suite %s, case %s)",
           case.expression, file, i, i2)
         it(name, function()
-          local result = jmespath.search(case.expression, suite.given)
-          if case.result == nil then
-            assert.is_nil(result)
+          if case.error then
+            assert.is_false(pcall(jmespath.search, case.expression, suite.given))
+          elseif type(case.result) == "nil" then
+            assert.is_true(jmespath.search(case.expression, suite.given) == nil)
           else
-            assert.are.same(case.result, result)
+            assert.are.same(
+              case.result,
+              jmespath.search(case.expression, suite.given)
+            )
           end
         end)
       end
