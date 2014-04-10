@@ -5,36 +5,34 @@
 -- Interpreter prototype
 local Interpreter = {}
 
--- Interpreter constructor.
---
+--- Interpreter constructor.
 -- @treturn table
 function Interpreter:new()
   self.root = nil
   return self
 end
 
--- Double-dispatch function used to implement the external AST visitor.
---
+--- Double-dispatch function used to implement the external AST visitor.
 -- @tparam table node Node to traverse
 -- @param        data Data to search
--- @return       Returns the evaluated result.
+-- @return Returns the evaluated result.
 function Interpreter:visit(node, data)
   return self["visit_" .. node.type](self, node, data)
 end
 
--- Returns a specific field of the current node
+--- Returns a specific field of the current node
 function Interpreter:visit_field(node, data)
   if type(data) == "table" and data[node.key] ~= nil then
     return data[node.key]
   end
 end
 
--- Passes the result of the left expression to the right expression
+--- Passes the result of the left expression to the right expression
 function Interpreter:visit_subexpression(node, data)
   return self:visit(node.children[2], self:visit(node.children[1], data))
 end
 
--- Returns a specific index of the current node
+--- Returns a specific index of the current node
 function Interpreter:visit_index(node, data)
   if type(data) ~= "table" then return nil end
   if node.index < 0 then node.index = #data + node.index end
@@ -46,7 +44,7 @@ function Interpreter:visit_index(node, data)
   end
 end
 
--- Interprets a projection node, passing the values of the left child through
+--- Interprets a projection node, passing the values of the left child through
 -- the values of the right child and aggregating the non-null results into
 -- the return value.
 function Interpreter:visit_projection(node, data)
@@ -73,20 +71,21 @@ function Interpreter:visit_projection(node, data)
   return collected
 end
 
--- Flattens(merges) up the current node
+--- Flattens(merges) up the current node
 function Interpreter:visit_flatten(node, data)
 end
 
--- Returns a literal value
+--- Returns a literal value
 function Interpreter:visit_literal(node, data)
   return node.value
 end
 
--- Returns the current node(identity node)
+--- Returns the current node(identity node)
 function Interpreter:visit_current(node, data)
   return data
 end
 
+--- Evaluates an or expression
 -- Evaluates the left expression, and if it evaluates to false, returns the
 -- result of the right expression.
 function Interpreter:visit_or(node, data)
@@ -102,13 +101,14 @@ function Interpreter:visit_or(node, data)
   return result
 end
 
+--- Evaluates a pipe expression
 -- Passes the result of the left expression to the right expression while
 -- stopping any open projections.
 function Interpreter:visit_pipe(node, data)
   return self:visit(node.children[2], self:visit(node.children[1], data))
 end
 
--- Returns a sequence table of results
+--- Returns a sequence table of results
 function Interpreter:visit_multi_select_list(node, data)
   if data == nil then return nil end
   local collected = {}
@@ -120,7 +120,7 @@ function Interpreter:visit_multi_select_list(node, data)
   return collected
 end
 
--- Returns a hash table of results
+--- Returns a hash table of results
 function Interpreter:vist_multi_select_hash(node, data)
   if data == nil then return nil end
   local collected = {}
@@ -132,11 +132,11 @@ function Interpreter:vist_multi_select_hash(node, data)
   return collected
 end
 
--- Evaluates a comparison
+--- Evaluates a comparison
 function Interpreter:visit_comparator(node, data)
 end
 
--- Returns a value if a condition evaluates to true or nil
+--- Returns a value if a condition evaluates to true or nil
 function Interpreter:visit_condition(node, data)
   if self:visit(node.children[0], data) then
     return self:visit(node.children[1], data)
@@ -145,15 +145,15 @@ function Interpreter:visit_condition(node, data)
   return nil
 end
 
--- Returns the result of a funciton
+--- Returns the result of a funciton
 function Interpreter:visit_function(node, data)
 end
 
--- Returns the result of a string or array slice
+--- Returns the result of a string or array slice
 function Interpreter:visit_slice(node, data)
 end
 
--- Returns an expression node
+--- Returns an expression node
 function Interpreter:visit_expression(node, data)
   return {node = node, interpreter = self}
 end

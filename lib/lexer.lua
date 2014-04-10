@@ -64,36 +64,19 @@ local valid_operators = {
   ["<"] = 1, [">"] = 1, ["<="] = 1, [">="] = 1, ["!="] = 1, ["=="] = 1
 }
 
--- Split a string into tokens
--- @param  expression Expression to split
--- @return            Returns the tokens in a sequence table
-function split_tokens(expression)
-  local result = {}
-
-  for value in expression:gmatch(".") do
-    result[#result + 1] = value
-  end
-
-  return result
-end
-
--- Initalizes the lexer
---
+--- Initalizes the lexer
 -- @treturn table Returns an instance of a lexer.
 function Lexer:new()
   return self
 end
 
--- Creates a sequence table of tokens for use in a token stream.
---
+--- Creates a sequence table of tokens for use in a token stream.
 -- @tparam  string      Expression Expression to tokenize
 -- @treturn TokenStream Returns a stream of tokens
 function Lexer:tokenize(expression)
   local tokens = {}
+  self.token_iter = expression:gmatch(".")
   self.pos = 0
-  self.expr = expression
-  self.toks = split_tokens(expression)
-  self.token_count = #self.toks
   self:_consume()
 
   while self.c do
@@ -128,18 +111,13 @@ function Lexer:tokenize(expression)
   return TokenStream:new(tokens, expression)
 end
 
--- Advances to the next token and modifies the internal state of the lexer.
+--- Advances to the next token and modifies the internal state of the lexer.
 function Lexer:_consume()
-  if self.pos < self.token_count then
-    self.pos = self.pos + 1
-    self.c = self.toks[self.pos]
-  else
-    self.c = false
-  end
+  self.c = self.token_iter()
+  if self.c ~= "" then self.pos = self.pos + 1 end
 end
 
--- Consumes an identifier token /[A-Za-z0-9_\-]/
---
+--- Consumes an identifier token /[A-Za-z0-9_\-]/
 -- @treturn table Returns the identifier token
 function Lexer:_consume_identifier()
   local buffer = {self.c}
@@ -154,8 +132,7 @@ function Lexer:_consume_identifier()
   return {pos = start, type = "identifier", value = table.concat(buffer)}
 end
 
--- Consumes a number token /[0-9\-]/
---
+--- Consumes a number token /[0-9\-]/
 -- @treturn table Returns the number token
 function Lexer:_consume_number()
   local buffer = {self.c}
@@ -174,8 +151,7 @@ function Lexer:_consume_number()
   }
 end
 
--- Consumes a flatten token, lbracket, and filter token: "[]", "[?", and "["
---
+--- Consumes a flatten token, lbracket, and filter token: "[]", "[?", and "["
 -- @treturn table Returns the token
 function Lexer:_consume_lbracket()
   self:_consume()
@@ -190,8 +166,7 @@ function Lexer:_consume_lbracket()
   end
 end
 
--- Consumes an operation <, >, !, !=, ==
---
+--- Consumes an operation <, >, !, !=, ==
 -- @treturn table Returns the token
 function Lexer:_consume_operator()
   token = {
@@ -216,8 +191,7 @@ function Lexer:_consume_operator()
   return token
 end
 
--- Consumes an or, "||", and pipe, "|" token
---
+--- Consumes an or, "||", and pipe, "|" token
 -- @treturn table Returns the token
 function Lexer:_consume_pipe()
   self:_consume()
@@ -231,8 +205,7 @@ function Lexer:_consume_pipe()
   return {type = "or", value = "||", pos = self.pos - 2};
 end
 
--- Parse a string of tokens inside of a delimiter.
---
+--- Parse a string of tokens inside of a delimiter.
 -- @param   lexer   Lexer instance
 -- @param   wrapper Wrapping character
 -- @treturn table   Returns the start of a token
@@ -255,8 +228,7 @@ local function parse_inside(lexer, wrapper)
   return {value = table.concat(buffer), pos = p}
 end
 
--- Consumes a literal token.
---
+--- Consumes a literal token.
 -- @treturn table Returns the token
 function Lexer:_consume_literal()
   local token = parse_inside(self, '`')
@@ -265,8 +237,7 @@ function Lexer:_consume_literal()
   return token
 end
 
--- Consumes a quoted string.
---
+--- Consumes a quoted string.
 -- @treturn table Returns the token
 function Lexer:_consume_quoted_identifier()
   local token = parse_inside(self, '"')

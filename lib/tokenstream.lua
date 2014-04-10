@@ -5,8 +5,7 @@
 -- TokenStream prototype
 local TokenStream = {}
 
--- Returns a sequence table that contains a list of keys from a hash table.
---
+--- Returns a sequence table that contains a list of keys from a hash table.
 -- @tparam  tabke t Input table to get a list of keys from
 -- @treturn table   Returns the keys of the hash as a sequence table.
 local function table_keys(t)
@@ -21,8 +20,7 @@ local function table_keys(t)
   return keys
 end
 
--- Creates a new token stream
---
+--- Creates a new token stream
 -- @tparam table  token Sequence of tokens returned from a lexer
 -- @tparam string expr  The expression that was parsed
 function TokenStream:new(tokens, expr)
@@ -34,8 +32,7 @@ function TokenStream:new(tokens, expr)
   return self
 end
 
--- Moves the token stream cursor to the next token.
---
+--- Moves the token stream cursor to the next token.
 -- @tparam table valid An optional hash table of valid next tokens.
 -- @error  Raises an error if the next found token is not in the valid hash.
 function TokenStream:next(valid)
@@ -56,19 +53,19 @@ function TokenStream:next(valid)
   end
 end
 
--- Marks the current position of the token stream which allows you to
--- backtrack to the marked token in the event of a parse error.
+--- Marks the current token position for backtracking.
+-- Marking a token allows you to backtrack to the marked token in the event of
+-- a parse error.
 function TokenStream:mark()
   self.mark_pos = self.pos
 end
 
--- Removes any previously set mark token.
+--- Removes any previously set mark token.
 function TokenStream:unmark()
   self.mark_pos = 0
 end
 
--- Sets the token cursor position to a previously set mark position.
---
+--- Sets the token cursor position to a previously set mark position.
 -- @error Raises an error if no mark position was previously set.
 function TokenStream:backtrack()
   if not self.mark_pos then
