@@ -22,6 +22,7 @@ build = {
    modules = {
       ["jmespath"] = "lib/jmespath.lua",
       ["jmespath.lexer"] = "lib/lexer.lua",
+      ["jmespath.tokenstream"] = "lib/tokenstream.lua",
       ["jmespath.parser"] = "lib/parser.lua",
       ["jmespath.interpreter"] = "lib/interpreter.lua",
    }
