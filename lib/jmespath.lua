@@ -2,7 +2,7 @@
 -- @module jmespath
 
 -- Exported module table
-local M = {_VERSION = "0.1.0"}
+local jmespath = {_VERSION = "0.1.0"}
 
 local Lexer = require "jmespath.lexer"
 local Interpreter = require "jmespath.interpreter"
@@ -21,8 +21,8 @@ local cache = {}
 -- @return                   Returns the evaluated result as a table, string,
 --                           nil, number, or boolean.
 -- @error                    Raises an error if the expression is invalid.
-function M.search(expression, data)
-  return interpreter:visit(M.parse(expression), data)
+function jmespath.search(expression, data)
+  return interpreter:visit(jmespath.parse(expression), data)
 end
 
 -- Parses the given JMESPath expression into an AST of tables
@@ -30,7 +30,7 @@ end
 -- @tparam  string expression Expression to parse
 -- @treturn table  Returns the parsed result as a table of AST nodes.
 -- @error          Raises an error if the expression is invalid.
-function M.parse(expression)
+function jmespath.parse(expression)
   if #cache > 1024 then cache = {} end
   if not cache[expression] then
     cache[expression] = parser:parse(expression)
@@ -44,8 +44,8 @@ end
 -- @tparam  string expression Expression to tokenize
 -- @treturn table  Returns a token stream table.
 -- @error          Raises an error if the expression is invalid.
-function M.tokenize(expression)
+function jmespath.tokenize(expression)
   return lexer:tokenize(expression)
 end
 
-return M
+return jmespath
