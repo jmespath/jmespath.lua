@@ -233,7 +233,20 @@ end
 function Lexer:_consume_literal()
   local token = parse_inside(self, '`')
   token.type = "literal"
-  token.value = json.decode(token.value)
+
+  if token.value == "null" then
+    token.value = nil
+  elseif token.value:sub(1, 1) == '"' then
+    token.value = json.decode(token.value)
+  else
+    local as_number = tonumber(token.value)
+    if as_number then
+      token.value = as_number
+    else
+      token.value = json.decode('"' .. token.value .. '"')
+    end
+  end
+
   return token
 end
 
