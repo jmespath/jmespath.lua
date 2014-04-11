@@ -27,9 +27,7 @@ end
 
 --- Returns a specific field of the current node
 function Interpreter:visit_field(node, data)
-  if type(data) == "table" and data[node.key] ~= nil then
-    return data[node.key]
-  end
+  if type(data) == "table" then return data[node.key] end
 end
 
 --- Passes the result of the left expression to the right expression
