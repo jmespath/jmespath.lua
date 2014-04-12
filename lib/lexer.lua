@@ -3,11 +3,22 @@
 --     local Lexer = require "jmespath.lexer"
 --     local lexer = Lexer()
 --
+-- The lexer requires the ability to decode JSON strings into Lua tables and
+-- primitives. You can pass in a custom JSON decode function by providing a
+-- function in the "json_decode" option of the Lexer's configuration table
+-- constructor. This function accepts a string of JSON and must return the
+-- parsed Lua representation. In order for various aspects of JMESPath to work
+-- correctly, it is expected that "null" is decoded into Lua nils.
+--
+--     local lexer = Lexer({json_decode = function() return cjson.decode end})
+--
+-- If no JSON decode function is provided, then the lexer will attempt to use
+-- dkjson.
+--
 -- @module jmespath.lexer
 -- @alias Lexer
 
 -- JSON is needed for decoding tokens
-local json = require "dkjson"
 local TokenStream = require "jmespath.tokenstream"
 
 -- Lexer prototype class that is returned as the module
@@ -88,7 +99,12 @@ local tset = (function()
 end)()
 
 --- Initalizes the lexer
-function Lexer:new()
+function Lexer:new(config)
+  if config and config.json_decode then
+    self.json_decode = config.json_decode
+  else
+    self.json_decode = (require "dkjson").decode
+  end
   return self
 end
 
@@ -263,7 +279,7 @@ function Lexer:_consume_literal()
   if tset.json_decode_char[first_char] or
     tset.json_numbers[first_char]
   then
-    token.value = json.decode(token.value)
+    token.value = self.json_decode(token.value)
   elseif token.value == "null" then
     token.value = nil
   elseif token.value == "true" then
@@ -271,9 +287,9 @@ function Lexer:_consume_literal()
   elseif token.value == "false" then
     token.value = false
   elseif token.value:sub(1, 1) == '"' then
-    token.value = json.decode(token.value)
+    token.value = self.json_decode(token.value)
   else
-    token.value = json.decode('"' .. token.value .. '"')
+    token.value = self.json_decode('"' .. token.value .. '"')
   end
 
   return token
@@ -284,11 +300,11 @@ end
 function Lexer:_consume_quoted_identifier()
   local token = parse_inside(self, '"')
   token.type = "quoted_identifier"
-  token.value = json.decode('"' .. token.value.. '"')
+  token.value = self.json_decode('"' .. token.value.. '"')
   return token
 end
 
 -- Return the Lexer creational method
-return function()
-  return Lexer:new()
+return function(...)
+  return Lexer:new(...)
 end
