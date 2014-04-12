@@ -13,64 +13,79 @@ local TokenStream = require "jmespath.tokenstream"
 -- Lexer prototype class that is returned as the module
 local Lexer = {}
 
--- Combine two sequence tables into a new table.
-local function combine_seq(a, b)
-  result = {}
-  for k, _ in pairs(a) do result[k] = true end
-  for k, _ in pairs(b) do result[k] = true end
-  return result
-end
+-- Provides a set of tokens used by the lexer
+--
+-- - simple: Simple token characters
+-- - numbers: Number tokens
+-- - identifier_start: Tokens that can start an identifier
+-- - identifiers: Any valid identifier token
+-- - operator_start: Any valid operator start token
+-- - operators: Valid operator tokens
+-- - json_decode_characters: Starting characters that require JSON decoding
+-- - json_numbers: Valid characters that make up a JSON number
+local tset = (function()
+  local t = {
+    -- Simple, single character, tokens
+    simple = {
+      [" "]  = "ws",
+      ["\n"] = "ws",
+      ["\t"] = "ws",
+      ["\r"] = "ws",
+      ["."]  = "dot",
+      ["*"]  = "star",
+      [","]  = "comma",
+      [":"]  = "colon",
+      ["{"]  = "lbrace",
+      ["}"]  = "rbrace",
+      ["]"]  = "rbracket",
+      ["("]  = "lparen",
+      [")"]  = "rparen",
+      ["@"]  = "current",
+      ["&"]  = "expref"
+    },
+    -- Tokens that can be numbers
+    numbers = {
+      ["0"] = 1, ["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1, ["5"] = 1,
+      ["6"] = 1, ["7"] = 1, ["8"] = 1, ["9"] = 1
+    },
+    -- Tokens that can start an identifier
+    identifier_start = {
+      ["a"] = 1, ["b"] = 1, ["c"] = 1, ["d"] = 1, ["e"] = 1, ["f"] = 1,
+      ["g"] = 1, ["h"] = 1, ["i"] = 1, ["j"] = 1, ["k"] = 1, ["l"] = 1,
+      ["m"] = 1, ["n"] = 1, ["o"] = 1, ["p"] = 1, ["q"] = 1, ["r"] = 1,
+      ["s"] = 1, ["t"] = 1, ["u"] = 1, ["v"] = 1, ["w"] = 1, ["x"] = 1,
+      ["y"] = 1, ["z"] = 1, ["A"] = 1, ["B"] = 1, ["C"] = 1, ["D"] = 1,
+      ["E"] = 1, ["F"] = 1, ["G"] = 1, ["H"] = 1, ["I"] = 1, ["J"] = 1,
+      ["K"] = 1, ["L"] = 1, ["M"] = 1, ["N"] = 1, ["O"] = 1, ["P"] = 1,
+      ["Q"] = 1, ["R"] = 1, ["S"] = 1, ["T"] = 1, ["U"] = 1, ["V"] = 1,
+      ["W"] = 1, ["X"] = 1, ["Y"] = 1, ["Z"] = 1, ["_"] = 1
+    },
+    -- Operator start tokens
+    operator_start = {["="] = 1, ["<"] = 1, [">"] = 1, ["!"] = 1},
+    -- When a JSON literal starts with these, then JSON decode them.
+    json_decode_char = {['"'] = 1, ['['] = 1, ['{'] = 1}
+  }
 
--- Simple, single character, tokens
-local simple_tokens = {
-  [" "]  = "ws",
-  ["\n"] = "ws",
-  ["\t"] = "ws",
-  ["\r"] = "ws",
-  ["."]  = "dot",
-  ["*"]  = "star",
-  [","]  = "comma",
-  [":"]  = "colon",
-  ["{"]  = "lbrace",
-  ["}"]  = "rbrace",
-  ["]"]  = "rbracket",
-  ["("]  = "lparen",
-  [")"]  = "rparen",
-  ["@"]  = "current",
-  ["&"]  = "expref"
-}
+  -- Combine two sequence tables into a new table.
+  local function combine_seq(a, b)
+    result = {}
+    for k, _ in pairs(a) do result[k] = true end
+    for k, _ in pairs(b) do result[k] = true end
+    return result
+  end
 
--- Tokens that can be numbers
-local numbers = {
-  ["0"] = 1, ["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1,
-  ["5"] = 1, ["6"] = 1, ["7"] = 1, ["8"] = 1, ["9"] = 1
-}
+  -- Represents identifier start tokens (merged with identifier_start).
+  t.identifiers = combine_seq(t.identifier_start, t.numbers)
+  t.identifiers["-"] = true
+  -- Valid operator tokens
+  t.operators = combine_seq(t.operator_start, {
+    ["<="] = 1, [">="] = 1, ["!="] = 1, ["=="] = 1
+  })
+  -- Valid JSON number tokens
+  t.json_numbers = combine_seq(t.numbers, {["-"] = 1})
 
--- Tokens that can start an identifier
-local identifier_start = {
-  ["a"] = 1, ["b"] = 1, ["c"] = 1, ["d"] = 1, ["e"] = 1, ["f"] = 1, ["g"] = 1,
-  ["h"] = 1, ["i"] = 1, ["j"] = 1, ["k"] = 1, ["l"] = 1, ["m"] = 1, ["n"] = 1,
-  ["o"] = 1, ["p"] = 1, ["q"] = 1, ["r"] = 1, ["s"] = 1, ["t"] = 1, ["u"] = 1,
-  ["v"] = 1, ["w"] = 1, ["x"] = 1, ["y"] = 1, ["z"] = 1, ["A"] = 1, ["B"] = 1,
-  ["C"] = 1, ["D"] = 1, ["E"] = 1, ["F"] = 1, ["G"] = 1, ["H"] = 1, ["I"] = 1,
-  ["J"] = 1, ["K"] = 1, ["L"] = 1, ["M"] = 1, ["N"] = 1, ["O"] = 1, ["P"] = 1,
-  ["Q"] = 1, ["R"] = 1, ["S"] = 1, ["T"] = 1, ["U"] = 1, ["V"] = 1, ["W"] = 1,
-  ["X"] = 1, ["Y"] = 1, ["Z"] = 1, ["_"] = 1
-}
-
--- Represents identifier start tokens (merged with identifier_start).
-local identifiers = combine_seq(identifier_start, numbers)
-identifiers["-"] = true
-
--- Operator start tokens
-local operator_start_tokens = {["="]=1, ["<"]=1, [">"]=1, ["!"]=1}
-
-local valid_operators = combine_seq(operator_start_tokens, {
-  ["<="] = 1, [">="] = 1, ["!="] = 1, ["=="] = 1
-})
-
-local json_decode_characters = {['"'] = 1, ['['] = 1, ['{'] = 1}
-local json_numbers = combine_seq(numbers, {["-"] = 1})
+  return t
+end)()
 
 --- Initalizes the lexer
 function Lexer:new()
@@ -87,22 +102,22 @@ function Lexer:tokenize(expression)
   self:_consume()
 
   while self.c do
-    if identifier_start[self.c] then
+    if tset.identifier_start[self.c] then
       tokens[#tokens + 1] = self:_consume_identifier()
-    elseif simple_tokens[self.c] then
-      if simple_tokens[self.c] ~= "ws" then
+    elseif tset.simple[self.c] then
+      if tset.simple[self.c] ~= "ws" then
         tokens[#tokens + 1] = {
           pos   = self.pos,
-          type  = simple_tokens[self.c],
+          type  = tset.simple[self.c],
           value = self.c
         }
       end
       self:_consume()
-    elseif numbers[self.c] or self.c == "-" then
+    elseif tset.numbers[self.c] or self.c == "-" then
       tokens[#tokens + 1] = self:_consume_number()
     elseif self.c == "[" then
       tokens[#tokens + 1] = self:_consume_lbracket()
-    elseif operator_start_tokens[self.c] then
+    elseif tset.operator_start[self.c] then
       tokens[#tokens + 1] = self:_consume_operator()
     elseif self.c == "|" then
       tokens[#tokens + 1] = self:_consume_pipe()
@@ -131,7 +146,7 @@ function Lexer:_consume_identifier()
   local start = self.pos
   self:_consume()
 
-  while identifiers[self.c] do
+  while tset.identifiers[self.c] do
     buffer[#buffer + 1] = self.c
     self:_consume()
   end
@@ -146,7 +161,7 @@ function Lexer:_consume_number()
   local start = self.pos
   self:_consume()
 
-  while numbers[self.c] do
+  while tset.numbers[self.c] do
     buffer[#buffer + 1] = self.c
     self:_consume()
   end
@@ -191,7 +206,7 @@ function Lexer:_consume_operator()
     error("Expected ==, got =")
   end
 
-  if not valid_operators[token.value] then
+  if not tset.operators[token.value] then
     error("Invalid operator: " .. token.value)
   end
 
@@ -245,7 +260,9 @@ function Lexer:_consume_literal()
   local first_char = token.value:sub(1, 1)
   token.type = "literal"
 
-  if json_decode_characters[first_char] or json_numbers[first_char] then
+  if tset.json_decode_char[first_char] or
+    tset.json_numbers[first_char]
+  then
     token.value = json.decode(token.value)
   elseif token.value == "null" then
     token.value = nil
