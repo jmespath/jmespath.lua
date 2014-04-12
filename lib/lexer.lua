@@ -21,7 +21,7 @@ local Lexer = {}
 -- - identifiers: Any valid identifier token
 -- - operator_start: Any valid operator start token
 -- - operators: Valid operator tokens
--- - json_decode_characters: Starting characters that require JSON decoding
+-- - json_decode_char: Starting characters that require JSON decoding
 -- - json_numbers: Valid characters that make up a JSON number
 local tset = (function()
   local t = {
