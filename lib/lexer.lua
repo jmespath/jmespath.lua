@@ -10,7 +10,7 @@
 -- parsed Lua representation. In order for various aspects of JMESPath to work
 -- correctly, it is expected that "null" is decoded into Lua nils.
 --
---     local lexer = Lexer({json_decode = function() return cjson.decode end})
+--     local lexer = Lexer({json_decode = cjson.decode)
 --
 -- If no JSON decode function is provided, then the lexer will attempt to use
 -- dkjson.
@@ -100,11 +100,8 @@ end)()
 
 --- Initalizes the lexer
 function Lexer:new(config)
-  if config and config.json_decode then
-    self.json_decode = config.json_decode
-  else
-    self.json_decode = (require "dkjson").decode
-  end
+  if config then self.json_decode = config.json_decode end
+  self.json_decode = self.json_decode or (require "dkjson").decode
   return self
 end
 

@@ -24,7 +24,11 @@ setmetatable(Interpreter, {
 
 --- Interpreter constructor
 function Interpreter:new(config)
-  self.hashfn = (config and config.hashfn) or function () return {} end
+  if config then
+    self.hashfn = config.hashfn
+  else
+    self.hashfn = function () return {} end
+  end
   return self
 end
 
