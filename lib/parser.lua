@@ -1,4 +1,13 @@
 -- Implements a JMESPath Pratt parser
+--
+--     local Parser = require "jmespath.parser"
+--     local parser = Parser()
+--
+-- Parser accepts an optional config argument in its constructor. The config
+-- argument is a table that can contain the following keys:
+--
+-- - lexer: An instance of a Lexer object
+--
 -- @module jmespath.parser
 -- @alias  Parser
 
@@ -38,20 +47,14 @@ setmetatable(Parser, {
   __index = function(self, key)
     self:_throw("Invalid use of '" .. self.tokens.cur.type .. "' token "
       .. "(" .. key .. ")")
- end
+  end
 })
 
 --- Creates a new parser
 -- @tparam table config Accepts an optional lexer key
 function Parser:new(config)
   config = config or {}
-
-  if not config.lexer then
-    config.lexer = require("lexer")
-  end
-
-  self.lexer = config.lexer
-
+  self.lexer = config.lexer or require("jmespath.lexer")()
   return self
 end
 
@@ -130,7 +133,6 @@ function Parser:_nud_lbrace()
   local valid = {quoted_identifier = true, identifier = true}
   local valid_colon = {colon = true}
   local kvp = {}
-
   self.tokens:next(valid)
 
   while true do
@@ -388,4 +390,6 @@ function Parser:_throw(msg)
   error(msg)
 end
 
-return Parser
+return function(...)
+  return Parser:new(...)
+end

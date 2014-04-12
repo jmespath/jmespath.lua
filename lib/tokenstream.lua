@@ -1,4 +1,8 @@
 -- Implements a stream of tokens, allowing for backtracking
+--
+--     local TokenStream = require "jmespath.tokenstream"
+--     local ts = TokenStream(tokens, expression)
+--
 -- @module jmespath.tokenstream
 -- @alias TokenStream
 
@@ -72,7 +76,10 @@ function TokenStream:backtrack()
     error("No mark position was set on the token stream")
   end
   self.pos = self.mark_pos
+  self.cur = self.tokens[self.pos]
   self.mark_pos = nil
 end
 
-return TokenStream
+return function(...)
+  return TokenStream:new(...)
+end

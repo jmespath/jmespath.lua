@@ -1,17 +1,12 @@
 -- Implements the main jmespath() function
 -- @module jmespath
 
--- Exported module table
+-- Exported module
 local jmespath = {_VERSION = "0.1.0"}
 
-local Lexer = require "jmespath.lexer"
-local Interpreter = require "jmespath.interpreter"
-local Parser = require "jmespath.parser"
-
--- Private module properties
-local lexer = Lexer:new()
-local parser = Parser:new({lexer=lexer})
-local interpreter = Interpreter:new()
+local lexer = require("jmespath.lexer")()
+local interpreter = require("jmespath.interpreter")()
+local parser = require("jmespath.parser")({lexer = lexer})
 local cache = {}
 
 --- Searches the provided data using a JMESPath expression

@@ -2,6 +2,38 @@ local jmespath = require "jmespath"
 local lfs = require "lfs"
 local json = require "dkjson"
 
+local function jcmp(a, b)
+
+  local ta, tb = type(a), type(b)
+  if ta ~= tb then return false end
+  if ta ~= "table" then return a == b end
+  if #a ~= #b then return false end
+  local visited = {}
+
+  if #a > 0 then
+    for k1, v1 in ipairs(a) do
+      for k2, v2 in ipairs(b) do
+        if not visited[k2] and jcmp(v1, v2) then
+          visited[k2] = true
+          break
+        end
+      end
+    end
+    return #visited == #a
+  end
+
+  for k, _ in pairs(a) do
+    if not jcmp(a[k], b[k]) then return false end
+    visited[k] = true
+  end
+
+  for k, _ in pairs(b) do
+    if not visited[k] and not jcmp(a[k], b[k]) then return false end
+  end
+
+  return true
+end
+
 describe('compliance', function()
 
   -- Load the test suite JSON data from a file
@@ -27,10 +59,10 @@ describe('compliance', function()
           elseif type(case.result) == "nil" then
             assert.is_true(jmespath.search(case.expression, suite.given) == nil)
           else
-            assert.are.same(
-              case.result,
-              jmespath.search(case.expression, suite.given)
-            )
+            local result = jmespath.search(case.expression, suite.given)
+            if not jcmp(case.result, result) then
+              assert.are.same(case.result, result)
+            end
           end
         end)
       end

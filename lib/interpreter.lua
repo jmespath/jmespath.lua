@@ -1,4 +1,16 @@
 -- Interprets JMESPath ASTs
+--
+--     local Interpreter = require "jmespath.interpreter"
+--     local it = Interpreter()
+--
+-- The interpreter accepts an optional configuration table that can contain
+-- the following keys:
+--
+-- - hashfn: A function that returns the data structure used to create hashes
+--   (e.g., used when evaluating multi-select-hash nodes). This can be useful
+--   if you wanted to provide a custom data structure that maintains ordered
+--   hashes.
+--
 -- @module jmespath.interpreter
 -- @alias Interpreter
 
@@ -10,10 +22,9 @@ setmetatable(Interpreter, {
   __index = function(self, key) error("Invalid AST node: " .. key) end
 })
 
---- Interpreter constructor.
--- @treturn table
-function Interpreter:new()
-  self.root = nil
+--- Interpreter constructor
+function Interpreter:new(config)
+  self.hashfn = (config and config.hashfn) or function () return {} end
   return self
 end
 
@@ -140,7 +151,7 @@ end
 --- Returns a hash table of results
 function Interpreter:visit_multi_select_hash(node, data)
   if data == nil then return nil end
-  local collected = {}
+  local collected = self.hashfn()
 
   for k, v in ipairs(node.children) do
     collected[v.key] = self:visit(v.children[1], value)
@@ -175,4 +186,7 @@ function Interpreter:visit_expression(node, data)
   return {node = node, interpreter = self}
 end
 
-return Interpreter
+-- Returns the Interpreter creational method
+return function()
+  return Interpreter:new()
+end

@@ -1,4 +1,8 @@
 -- Provides tokenization of JMESPath expressions:
+--
+--     local Lexer = require "jmespath.lexer"
+--     local lexer = Lexer()
+--
 -- @module jmespath.lexer
 -- @alias Lexer
 
@@ -8,6 +12,14 @@ local TokenStream = require "jmespath.tokenstream"
 
 -- Lexer prototype class that is returned as the module
 local Lexer = {}
+
+-- Combine two sequence tables into a new table.
+local function combine_seq(a, b)
+  result = {}
+  for k, _ in pairs(a) do result[k] = true end
+  for k, _ in pairs(b) do result[k] = true end
+  return result
+end
 
 -- Simple, single character, tokens
 local simple_tokens = {
@@ -28,6 +40,12 @@ local simple_tokens = {
   ["&"]  = "expref"
 }
 
+-- Tokens that can be numbers
+local numbers = {
+  ["0"] = 1, ["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1,
+  ["5"] = 1, ["6"] = 1, ["7"] = 1, ["8"] = 1, ["9"] = 1
+}
+
 -- Tokens that can start an identifier
 local identifier_start = {
   ["a"] = 1, ["b"] = 1, ["c"] = 1, ["d"] = 1, ["e"] = 1, ["f"] = 1, ["g"] = 1,
@@ -40,32 +58,21 @@ local identifier_start = {
   ["X"] = 1, ["Y"] = 1, ["Z"] = 1, ["_"] = 1
 }
 
--- Represents any acceptable identifier start token
-local identifiers = {
-  ["-"] = 1, ["0"] = 1, ["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1,
-  ["5"] = 1, ["6"] = 1, ["7"] = 1, ["8"] = 1, ["9"] = 1
-}
-
--- Merge the identifier start tokens into the identifiers token list
-for k, _ in pairs(identifier_start) do
-  identifiers[k] = true
-end
+-- Represents identifier start tokens (merged with identifier_start).
+local identifiers = combine_seq(identifier_start, numbers)
+identifiers["-"] = true
 
 -- Operator start tokens
-local op_tokens = {["="]=1, ["<"]=1, [">"]=1, ["!"]=1}
+local operator_start_tokens = {["="]=1, ["<"]=1, [">"]=1, ["!"]=1}
 
--- Tokens that can be numbers
-local numbers = {
-  ["0"] = 1, ["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1,
-  ["5"] = 1, ["6"] = 1, ["7"] = 1, ["8"] = 1, ["9"] = 1
-}
+local valid_operators = combine_seq(operator_start_tokens, {
+  ["<="] = 1, [">="] = 1, ["!="] = 1, ["=="] = 1
+})
 
-local valid_operators = {
-  ["<"] = 1, [">"] = 1, ["<="] = 1, [">="] = 1, ["!="] = 1, ["=="] = 1
-}
+local json_decode_characters = {['"'] = 1, ['['] = 1, ['{'] = 1}
+local json_numbers = combine_seq(numbers, {["-"] = 1})
 
 --- Initalizes the lexer
--- @treturn table Returns an instance of a lexer.
 function Lexer:new()
   return self
 end
@@ -95,7 +102,7 @@ function Lexer:tokenize(expression)
       tokens[#tokens + 1] = self:_consume_number()
     elseif self.c == "[" then
       tokens[#tokens + 1] = self:_consume_lbracket()
-    elseif op_tokens[self.c] then
+    elseif operator_start_tokens[self.c] then
       tokens[#tokens + 1] = self:_consume_operator()
     elseif self.c == "|" then
       tokens[#tokens + 1] = self:_consume_pipe()
@@ -108,7 +115,7 @@ function Lexer:tokenize(expression)
     end
   end
 
-  return TokenStream:new(tokens, expression)
+  return TokenStream(tokens, expression)
 end
 
 --- Advances to the next token and modifies the internal state of the lexer.
@@ -208,8 +215,9 @@ end
 --- Parse a string of tokens inside of a delimiter.
 -- @param   lexer   Lexer instance
 -- @param   wrapper Wrapping character
+-- @param   skip_ws Set to true to skip whitespace
 -- @treturn table   Returns the start of a token
-local function parse_inside(lexer, wrapper)
+local function parse_inside(lexer, wrapper, skip_ws)
   local p = lexer.pos
   local last = "\\"
   local buffer = {}
@@ -219,7 +227,9 @@ local function parse_inside(lexer, wrapper)
 
   while lexer.c and not (lexer.c == wrapper and last ~= "\\") do
     last = lexer.c
-    buffer[#buffer + 1] = lexer.c
+    if not skip_ws or last ~= " " then
+      buffer[#buffer + 1] = lexer.c
+    end
     lexer:_consume()
   end
 
@@ -231,20 +241,22 @@ end
 --- Consumes a literal token.
 -- @treturn table Returns the token
 function Lexer:_consume_literal()
-  local token = parse_inside(self, '`')
+  local token = parse_inside(self, '`', true)
+  local first_char = token.value:sub(1, 1)
   token.type = "literal"
 
-  if token.value == "null" then
+  if json_decode_characters[first_char] or json_numbers[first_char] then
+    token.value = json.decode(token.value)
+  elseif token.value == "null" then
     token.value = nil
+  elseif token.value == "true" then
+    token.value = true
+  elseif token.value == "false" then
+    token.value = false
   elseif token.value:sub(1, 1) == '"' then
     token.value = json.decode(token.value)
   else
-    local as_number = tonumber(token.value)
-    if as_number then
-      token.value = as_number
-    else
-      token.value = json.decode('"' .. token.value .. '"')
-    end
+    token.value = json.decode('"' .. token.value .. '"')
   end
 
   return token
@@ -259,4 +271,7 @@ function Lexer:_consume_quoted_identifier()
   return token
 end
 
-return Lexer
+-- Return the Lexer creational method
+return function()
+  return Lexer:new()
+end
