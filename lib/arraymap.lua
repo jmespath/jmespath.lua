@@ -34,7 +34,6 @@ end
 
 --- Allows the ArrayMap to be used like a hash
 function ArrayMap:__index(k)
-  print("aaaa")
   local result = ArrayMap.get_value(self, k)
   if result ~= nil then return result end
   return rawget(ArrayMap, k)

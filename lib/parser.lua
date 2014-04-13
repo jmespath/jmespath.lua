@@ -81,7 +81,7 @@ end
 -- @treturn table
 function Parser:_expr(rbp)
   rbp = rbp or 0
-  left = self["_nud_" .. self.tokens.cur.type](self)
+  local left = self["_nud_" .. self.tokens.cur.type](self)
 
   while rbp < bp[self.tokens.cur.type] do
     left = self["_led_" .. self.tokens.cur.type](self, left)
@@ -99,7 +99,7 @@ end
 
 --- Parses a nud quoted identifier (e.g., "foo")
 function Parser:_nud_quoted_identifier()
-  token = self.tokens.cur
+  local token = self.tokens.cur
   self.tokens:next()
 
   if self.tokens.cur.type == "lparen" then
@@ -198,10 +198,10 @@ function Parser:_led_lbracket(left)
   local t = self.tokens.cur.type
 
   if t == "number" or t == "colon" then
-      return {
-          type     = "subexpression",
-          children = {left, self:_parse_array_index_expr()}
-      }
+    return {
+      type     = "subexpression",
+      children = {left, self:_parse_array_index_expr()}
+    }
   end
 
   return self:_parse_wildcard_array(left)

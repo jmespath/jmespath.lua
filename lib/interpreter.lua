@@ -173,8 +173,6 @@ function Interpreter:visit_condition(node, data)
   if self:visit(node.children[1], data) then
     return self:visit(node.children[2], data)
   end
-
-  return nil
 end
 
 --- Returns the result of a funciton

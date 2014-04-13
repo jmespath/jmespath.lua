@@ -79,7 +79,7 @@ local tset = (function()
 
   -- Combine two sequence tables into a new table.
   local function combine_seq(a, b)
-    result = {}
+    local result = {}
     for k, _ in pairs(a) do result[k] = true end
     for k, _ in pairs(b) do result[k] = true end
     return result
@@ -204,7 +204,7 @@ end
 --- Consumes an operation <, >, !, !=, ==
 -- @treturn table Returns the token
 function Lexer:_consume_operator()
-  token = {
+  local token = {
     type  = "comparator",
     pos   = self.pos,
     value = self.c
