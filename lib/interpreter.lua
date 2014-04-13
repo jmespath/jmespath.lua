@@ -191,6 +191,6 @@ function Interpreter:visit_expression(node, data)
 end
 
 -- Returns the Interpreter creational method
-return function()
-  return Interpreter:new()
+return function(...)
+  return Interpreter:new(...)
 end

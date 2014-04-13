@@ -25,5 +25,6 @@ build = {
       ["jmespath.tokenstream"] = "lib/tokenstream.lua",
       ["jmespath.parser"] = "lib/parser.lua",
       ["jmespath.interpreter"] = "lib/interpreter.lua",
+      ["jmespath.arraymap"] = "lib/arraymap.lua",
    }
 }
