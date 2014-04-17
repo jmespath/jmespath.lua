@@ -1,7 +1,7 @@
 -- Implements a stream of tokens, allowing for backtracking
 --
 --     local TokenStream = require 'jmespath.tokenstream'
---     local ts = TokenStream(tokens, expression)
+--     local tokenstream = TokenStream.new(tokens, expression)
 --
 -- @module jmespath.tokenstream
 -- @alias TokenStream
@@ -62,7 +62,8 @@ end
 -- @return table
 function TokenStream:peek(number)
   if not number then number = 1 end
-  return self.tokens[self.pos + number] or {pos = #self.expr + 1, type = 'eof'}
+  return self.tokens[self.pos + number]
+    or {pos = #self.expr + 1, type = 'eof'}
 end
 
 return TokenStream

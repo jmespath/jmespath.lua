@@ -1,4 +1,4 @@
--- Implements the main jmespath() function
+-- Implements the main jmespath function
 -- @module jmespath
 
 local jmespath = {
