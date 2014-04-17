@@ -1,7 +1,7 @@
 -- Provides tokenization of JMESPath expressions:
 --
 --     local Lexer = require "jmespath.lexer"
---     local lexer = Lexer()
+--     local lexer = Lexer.new()
 --
 -- The lexer requires the ability to decode JSON strings into Lua tables and
 -- primitives. You can pass in a custom JSON decode function by providing a
@@ -10,7 +10,7 @@
 -- parsed Lua representation. In order for various aspects of JMESPath to work
 -- correctly, it is expected that "null" is decoded into Lua nils.
 --
---     local lexer = Lexer({json_decode = cjson.decode)
+--     local lexer = Lexer.new{json_decode = cjson.decode}
 --
 -- If no JSON decode function is provided, then the lexer will attempt to use
 -- dkjson.
@@ -23,6 +23,9 @@ local TokenStream = require "jmespath.tokenstream"
 
 -- Lexer prototype class that is returned as the module
 local Lexer = {}
+
+-- Lexer can be constructed using __call()
+setmetatable(Lexer, {__call = function(...) return Lexer.new(...) end})
 
 -- Provides a set of tokens used by the lexer
 --
@@ -99,7 +102,8 @@ local tset = (function()
 end)()
 
 --- Initalizes the lexer
-function Lexer:new(config)
+function Lexer.new(config)
+  local self = setmetatable({}, {__index = Lexer})
   if config then self.json_decode = config.json_decode end
   self.json_decode = self.json_decode or (require "dkjson").decode
   return self
@@ -302,6 +306,4 @@ function Lexer:_consume_quoted_identifier()
 end
 
 -- Return the Lexer creational method
-return function(...)
-  return Lexer:new(...)
-end
+return Lexer

@@ -1,7 +1,10 @@
 local jmespath = require "jmespath"
+local Parser = require 'jmespath.parser'
+local Lexer = require 'jmespath.lexer'
+local Interpreter = require 'jmespath.interpreter'
 
 describe('jmespath', function()
-  
+
   it("returns a result", function()
     assert.are.equal("foo", jmespath.search("a.b", {a={b="foo"}}))
   end)
@@ -42,6 +45,12 @@ describe('jmespath', function()
 
     stream:next()
     assert.are.same({type = "eof", pos = 8}, stream.cur)
+  end)
+
+  it("allows modules to construct by __call", function()
+    assert.not_nil(Parser().parse)
+    assert.not_nil(Lexer().tokenize)
+    assert.not_nil(Interpreter().visit)
   end)
 
 end)

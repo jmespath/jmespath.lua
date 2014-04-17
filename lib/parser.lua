@@ -1,7 +1,7 @@
 -- Implements a JMESPath Pratt parser
 --
 --     local Parser = require "jmespath.parser"
---     local parser = Parser()
+--     local parser = Parser.new()
 --
 -- Parser accepts an optional config argument in its constructor. The config
 -- argument is a table that can contain the following keys:
@@ -47,14 +47,16 @@ setmetatable(Parser, {
   __index = function(self, key)
     self:_throw("Invalid use of '" .. self.tokens.cur.type .. "' token "
       .. "(" .. key .. ")")
-  end
+  end,
+  __call = function() return Parser.new() end
 })
 
 --- Creates a new parser
 -- @tparam table config Accepts an optional lexer key
-function Parser:new(config)
+function Parser.new(config)
+  local self = setmetatable({}, {__index = Parser})
   config = config or {}
-  self.lexer = config.lexer or require("jmespath.lexer")()
+  self.lexer = config.lexer or require("jmespath.lexer").new()
   return self
 end
 
@@ -390,6 +392,4 @@ function Parser:_throw(msg)
   error(msg)
 end
 
-return function(...)
-  return Parser:new(...)
-end
+return Parser

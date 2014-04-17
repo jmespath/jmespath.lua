@@ -1,7 +1,7 @@
 -- Interprets JMESPath ASTs
 --
 --     local Interpreter = require "jmespath.interpreter"
---     local it = Interpreter()
+--     local interpreter = Interpreter.new()
 --
 -- The interpreter accepts an optional configuration table that can contain
 -- the following keys:
@@ -12,22 +12,24 @@
 --   hashes.
 --
 -- @module jmespath.interpreter
--- @alias Interpreter
 
 -- Interpreter prototype
 local Interpreter = {}
 
---- Handles invalid ast nodes.
 setmetatable(Interpreter, {
-  __index = function(self, key) error("Invalid AST node: " .. key) end
+  --- Handles invalid ast nodes
+  __index = function(self, key) error("Invalid AST node: " .. key) end,
+  -- Allows the interpreter to be constructed using __call
+  __call = function() return Interpreter.new() end
 })
 
 --- Interpreter constructor
-function Interpreter:new(config)
-  if config then
+function Interpreter.new(config)
+  local self = setmetatable({}, {__index = Interpreter})
+  if config and config.hashfn then
     self.hashfn = config.hashfn
   else
-    self.hashfn = function () return {} end
+    self.hashfn = function() return {} end
   end
   return self
 end
@@ -189,6 +191,4 @@ function Interpreter:visit_expression(node, data)
 end
 
 -- Returns the Interpreter creational method
-return function(...)
-  return Interpreter:new(...)
-end
+return Interpreter
