@@ -72,7 +72,6 @@ function ArrayMap:extend(values)
   return self
 end
 
--- Returns the ArrayMap prototype constructor function.
 return setmetatable(ArrayMap, {
   --- ArrayMap constructor accepts an initial hash of data
   -- @param value Hash table of value to seed the array map with

@@ -29,10 +29,9 @@ end
 -- @tparam string expr  The expression that was parsed
 function TokenStream:new(tokens, expr)
   self.tokens = tokens
-  self.expr = expr
   self.cur = self.tokens[1]
+  self.expr = expr
   self.pos = 0
-  self.mark_pos = 0
   return self
 end
 
@@ -57,27 +56,12 @@ function TokenStream:next(valid)
   end
 end
 
---- Marks the current token position for backtracking.
--- Marking a token allows you to backtrack to the marked token in the event of
--- a parse error.
-function TokenStream:mark()
-  self.mark_pos = self.pos
-end
-
---- Removes any previously set mark token.
-function TokenStream:unmark()
-  self.mark_pos = 0
-end
-
---- Sets the token cursor position to a previously set mark position.
--- @error Raises an error if no mark position was previously set.
-function TokenStream:backtrack()
-  if not self.mark_pos then
-    error('No mark position was set on the token stream')
-  end
-  self.pos = self.mark_pos
-  self.cur = self.tokens[self.pos]
-  self.mark_pos = nil
+--- Looks ahead to future tokens
+-- @param  number Number of lookahead tokens (defaults to 1)
+-- @return table
+function TokenStream:peek(number)
+  if not number then number = 1 end
+  return self.tokens[self.pos + number] or {pos = #self.expr + 1, type = 'eof'}
 end
 
 return function(...)

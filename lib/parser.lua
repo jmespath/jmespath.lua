@@ -9,47 +9,9 @@
 -- - lexer: An instance of a Lexer object
 --
 -- @module jmespath.parser
--- @alias  Parser
-
--- Token binding precedence table
-local bp = {
-  eof               = 0,
-  quoted_identifier = 0,
-  identifier        = 0,
-  rbracket          = 0,
-  rparen            = 0,
-  comma             = 0,
-  rbrace            = 0,
-  number            = 0,
-  current           = 0,
-  expref            = 0,
-  pipe              = 1,
-  comparator        = 2,
-  ['or']            = 5,
-  flatten           = 6,
-  star              = 20,
-  dot               = 40,
-  lbrace            = 50,
-  filter            = 50,
-  lbracket          = 50,
-  lparen            = 60
-}
-
--- Cached current node used as identity nodes.
-local current_node = {type = 'current'}
 
 -- Parser module
 local Parser = {}
-
---- Handle unexpected nud and led tokens and throws a useful error message.
--- @error Raises a contextual error message.
-setmetatable(Parser, {
-  __index = function(self, key)
-    self:_throw('Invalid use of "' .. self.tokens.cur.type .. '" token '
-      .. '(' .. key .. ')')
-  end,
-  __call = function() return Parser.new() end
-})
 
 --- Creates a new parser
 -- @tparam table config Accepts an optional lexer key
@@ -77,6 +39,33 @@ function Parser:parse(expression)
 
   return ast
 end
+
+-- Token binding precedence table
+local bp = {
+  eof               = 0,
+  quoted_identifier = 0,
+  identifier        = 0,
+  rbracket          = 0,
+  rparen            = 0,
+  comma             = 0,
+  rbrace            = 0,
+  number            = 0,
+  current           = 0,
+  expref            = 0,
+  pipe              = 1,
+  comparator        = 2,
+  ['or']            = 5,
+  flatten           = 6,
+  star              = 20,
+  dot               = 40,
+  lbrace            = 50,
+  filter            = 50,
+  lbracket          = 50,
+  lparen            = 60
+}
+
+-- Cached current node used as identity nodes.
+local current_node = {type = 'current'}
 
 --- Main expression parsing function
 -- @tparam  number rbp Maximum right bound precedence
@@ -180,14 +169,8 @@ function Parser:_nud_lbracket()
   end
 
   -- Try to parse a star, and if it fails, backtrack
-  if t == 'star' then
-    self.tokens:mark()
-    local status, result = pcall(Parser._parse_wildcard_array, self)
-    if status then
-      self.tokens:unmark()
-      return result
-    end
-    self.tokens:backtrack()
+  if t == 'star' and self.tokens:peek(1).type == "rbracket" then
+    return self:_parse_wildcard_array()
   end
 
   return self:_parse_multi_select_list()
@@ -392,4 +375,12 @@ function Parser:_throw(msg)
   error(msg)
 end
 
-return Parser
+return setmetatable(Parser, {
+  -- Allows the parser to be constructed using a factory method via __call()
+  __call = function() return Parser.new() end,
+  --- Handle unexpected nud and led tokens and throws a useful error message.
+  __index = function(self, key)
+    self:_throw('Invalid use of "' .. self.tokens.cur.type .. '" token '
+      .. '(' .. key .. ')')
+  end
+})

@@ -16,13 +16,6 @@
 -- Interpreter prototype
 local Interpreter = {}
 
-setmetatable(Interpreter, {
-  --- Handles invalid ast nodes
-  __index = function(self, key) error('Invalid AST node: ' .. key) end,
-  -- Allows the interpreter to be constructed using __call
-  __call = function() return Interpreter.new() end
-})
-
 --- Interpreter constructor
 function Interpreter.new(config)
   local self = setmetatable({}, {__index = Interpreter})
@@ -190,5 +183,9 @@ function Interpreter:visit_expression(node, data)
   return {node = node, interpreter = self}
 end
 
--- Returns the Interpreter creational method
-return Interpreter
+return setmetatable(Interpreter, {
+  --- Handles invalid ast nodes
+  __index = function(self, key) error('Invalid AST node: ' .. key) end,
+  -- Allows the interpreter to be constructed using __call
+  __call = function() return Interpreter.new() end
+})

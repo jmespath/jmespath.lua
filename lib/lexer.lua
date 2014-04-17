@@ -21,10 +21,7 @@
 -- JSON is needed for decoding tokens
 local TokenStream = require 'jmespath.tokenstream'
 
-local Lexer = setmetatable({}, {
-  -- Lexer can be constructed using __call()
-  __call = function() return Lexer.new() end
-})
+local Lexer = {}
 
 --- Lexer constructor
 function Lexer.new(config)
@@ -296,5 +293,7 @@ function consume_quoted_identifier(lexer)
   return token
 end
 
--- Return the Lexer creational method
-return Lexer
+return setmetatable(Lexer, {
+  -- Lexer can be constructed using __call()
+  __call = function() return Lexer.new() end
+})
