@@ -152,8 +152,8 @@ function Interpreter:visit_multi_select_hash(node, data)
   if data == nil then return nil end
   local collected = self.hashfn()
 
-  for k, v in ipairs(node.children) do
-    collected[v.key] = self:visit(v.children[1], value)
+  for _, v in ipairs(node.children) do
+    collected[v.key] = self:visit(v.children[1], data)
   end
 
   return collected
