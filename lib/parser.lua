@@ -1,6 +1,6 @@
 -- Implements a JMESPath Pratt parser
 --
---     local Parser = require "jmespath.parser"
+--     local Parser = require 'jmespath.parser'
 --     local parser = Parser.new()
 --
 -- Parser accepts an optional config argument in its constructor. The config
@@ -25,7 +25,7 @@ local bp = {
   expref            = 0,
   pipe              = 1,
   comparator        = 2,
-  ["or"]            = 5,
+  ['or']            = 5,
   flatten           = 6,
   star              = 20,
   dot               = 40,
@@ -36,7 +36,7 @@ local bp = {
 }
 
 -- Cached current node used as identity nodes.
-local current_node = {type = "current"}
+local current_node = {type = 'current'}
 
 -- Parser module
 local Parser = {}
@@ -45,8 +45,8 @@ local Parser = {}
 -- @error Raises a contextual error message.
 setmetatable(Parser, {
   __index = function(self, key)
-    self:_throw("Invalid use of '" .. self.tokens.cur.type .. "' token "
-      .. "(" .. key .. ")")
+    self:_throw('Invalid use of "' .. self.tokens.cur.type .. '" token '
+      .. '(' .. key .. ')')
   end,
   __call = function() return Parser.new() end
 })
@@ -56,7 +56,7 @@ setmetatable(Parser, {
 function Parser.new(config)
   local self = setmetatable({}, {__index = Parser})
   config = config or {}
-  self.lexer = config.lexer or require("jmespath.lexer").new()
+  self.lexer = config.lexer or require('jmespath.lexer').new()
   return self
 end
 
@@ -70,9 +70,9 @@ function Parser:parse(expression)
   self.tokens:next()
   local ast = self:_expr(0)
 
-  if self.tokens.cur.type ~= "eof" then
-    self:_throw("Encountered an unexpected '" .. self.tokens.cur.type
-      .. "' token and did not reach the end of the token stream.")
+  if self.tokens.cur.type ~= 'eof' then
+    self:_throw('Encountered an unexpected "' .. self.tokens.cur.type
+      .. '" token and did not reach the end of the token stream.')
   end
 
   return ast
@@ -83,10 +83,10 @@ end
 -- @treturn table
 function Parser:_expr(rbp)
   rbp = rbp or 0
-  local left = self["_nud_" .. self.tokens.cur.type](self)
+  local left = self['_nud_' .. self.tokens.cur.type](self)
 
   while rbp < bp[self.tokens.cur.type] do
-    left = self["_led_" .. self.tokens.cur.type](self, left)
+    left = self['_led_' .. self.tokens.cur.type](self, left)
   end
 
   return left
@@ -94,40 +94,40 @@ end
 
 --- Parses a leading identifier token (e.g., foo)
 function Parser:_nud_identifier()
-  local result = {type = "field", key = self.tokens.cur.value}
+  local result = {type = 'field', key = self.tokens.cur.value}
   self.tokens:next()
   return result
 end
 
---- Parses a nud quoted identifier (e.g., "foo")
+--- Parses a nud quoted identifier (e.g., 'foo')
 function Parser:_nud_quoted_identifier()
   local token = self.tokens.cur
   self.tokens:next()
 
-  if self.tokens.cur.type == "lparen" then
-    self:_throw("Quoted identifiers are not allowed for function names")
+  if self.tokens.cur.type == 'lparen' then
+    self:_throw('Quoted identifiers are not allowed for function names')
   end
 
-  return {type = "field", key = token.value}
+  return {type = 'field', key = token.value}
 end
 
 --- Parses the current node (e.g., @)
 function Parser:_nud_current()
   self.tokens:next()
-  return {type = "current"}
+  return {type = 'current'}
 end
 
 --- Parses a literal token (e.g., `foo`)
 function Parser:_nud_literal()
   local token = self.tokens.cur
   self.tokens:next()
-  return {type = "literal", value = token.value}
+  return {type = 'literal', value = token.value}
 end
 
 --- Parses an expression reference token
 function Parser:_nud_expref()
   self.tokens:next()
-  return {type = "expref", children = {self:_expr(2)}}
+  return {type = 'expref', children = {self:_expr(2)}}
 end
 
 --- Parses an lbrace token and creates a key-value-pair multi-select-hash node
@@ -142,17 +142,17 @@ function Parser:_nud_lbrace()
     self.tokens:next(valid_colon)
     self.tokens:next()
     kvp[#kvp + 1] = {
-      type     = "key_value_pair",
+      type     = 'key_value_pair',
       key      = key,
       children = {self:_expr()}
     }
-    if self.tokens.cur.type == "comma" then self.tokens:next(valid) end
+    if self.tokens.cur.type == 'comma' then self.tokens:next(valid) end
     if self.tokens.cur.type == 'rbrace' then break end
   end
 
   self.tokens:next()
 
-  return {type = "multi_select_hash", children = kvp}
+  return {type = 'multi_select_hash', children = kvp}
 end
 
 --- Parses a flatten token with no leading token.
@@ -175,12 +175,12 @@ function Parser:_nud_lbracket()
   self.tokens:next()
   local t = self.tokens.cur.type
 
-  if t == "number" or t == "colon" then
+  if t == 'number' or t == 'colon' then
     return self:_parse_array_index_expr()
   end
 
   -- Try to parse a star, and if it fails, backtrack
-  if t == "star" then
+  if t == 'star' then
     self.tokens:mark()
     local status, result = pcall(Parser._parse_wildcard_array, self)
     if status then
@@ -199,9 +199,9 @@ function Parser:_led_lbracket(left)
   self.tokens:next(next_types)
   local t = self.tokens.cur.type
 
-  if t == "number" or t == "colon" then
+  if t == 'number' or t == 'colon' then
     return {
-      type     = "subexpression",
+      type     = 'subexpression',
       children = {left, self:_parse_array_index_expr()}
     }
   end
@@ -213,10 +213,10 @@ end
 function Parser:_led_flatten(left)
   self.tokens:next()
   return {
-    type = "projection",
-    from = "array",
+    type = 'projection',
+    from = 'array',
     children = {
-      {type = "flatten", children = {left}},
+      {type = 'flatten', children = {left}},
       self:_parse_projection(bp.flatten)
     }
   }
@@ -225,13 +225,13 @@ end
 --- Parses an or token.
 function Parser:_led_or(left)
   self.tokens:next()
-  return {type = "or", children = {left, self:_expr(bp["or"])}}
+  return {type = 'or', children = {left, self:_expr(bp['or'])}}
 end
 
 --- Parses a pipe token.
 function Parser:_led_pipe(left)
   self.tokens:next()
-  return {type = "pipe", children = {left, self:_expr(bp.pipe)}}
+  return {type = 'pipe', children = {left, self:_expr(bp.pipe)}}
 end
 
 --- Parses an lparen that starts a function.
@@ -240,14 +240,14 @@ function Parser:_led_lparen(left)
   local name = left.key
   self.tokens:next()
 
-  while self.tokens.cur.type ~= "rparen" do
+  while self.tokens.cur.type ~= 'rparen' do
     args[#args + 1] = self:_expr(0)
-    if self.tokens.cur.type == "comma" then self.tokens:next() end
+    if self.tokens.cur.type == 'comma' then self.tokens:next() end
   end
 
   self.tokens:next()
 
-  return {type = "function", fn = name, children = args}
+  return {type = 'function', fn = name, children = args}
 end
 
 --- Parses a filter expression (e.g., [?foo==bar])
@@ -255,19 +255,19 @@ function Parser:_led_filter(left)
   self.tokens:next()
   local expression = self:_expr()
 
-  if self.tokens.cur.type ~= "rbracket" then
-    self:_throw("Expected a closing rbracket for the filter")
+  if self.tokens.cur.type ~= 'rbracket' then
+    self:_throw('Expected a closing rbracket for the filter')
   end
 
   self.tokens:next()
   local rhs = self:_parse_projection(bp.filter)
 
   return {
-    type = "projection",
-    from = "array",
+    type = 'projection',
+    from = 'array',
     children = {
       left or current_node,
-      {type = "condition", children = {expression, rhs}}
+      {type = 'condition', children = {expression, rhs}}
     }
   }
 end
@@ -278,7 +278,7 @@ function Parser:_led_comparator(left)
   self.tokens:next()
 
   return {
-    type     = "comparator",
+    type     = 'comparator',
     relation = token.value,
     children = {left, self:_expr()}
   }
@@ -287,7 +287,7 @@ end
 --- Parses a dot token (e.g., <expr>.<expr>)
 function Parser:_led_dot(left)
   self.tokens:next()
-  return {type = "subexpression", children = {left, self:_parse_dot(bp.dot)}}
+  return {type = 'subexpression', children = {left, self:_parse_dot(bp.dot)}}
 end
 
 --- Parses a projection and accounts for permutations and syntax errors.
@@ -296,13 +296,13 @@ function Parser:_parse_projection(rbp)
   local t = self.tokens.cur.type
   if bp[t] < 10 then
     return current_node
-  elseif t == "dot" then
+  elseif t == 'dot' then
     self.tokens:next(after_dot)
     return self:_parse_dot(rbp)
-  elseif t == "lbracket" then
+  elseif t == 'lbracket' then
     return self:_expr(rbp)
   else
-    self:_throw("Syntax error after projection")
+    self:_throw('Syntax error after projection')
   end
 end
 
@@ -310,8 +310,8 @@ end
 function Parser:_parse_wildcard_object(left)
   self.tokens:next()
   return {
-    type     = "projection",
-    from     = "object",
+    type     = 'projection',
+    from     = 'object',
     children = {left or current_node, self:_parse_projection(bp.star)}
   }
 end
@@ -321,8 +321,8 @@ function Parser:_parse_wildcard_array(left)
   self.tokens:next({rbracket = true})
   self.tokens:next()
   return {
-    type     = "projection",
-    from     = "array",
+    type     = 'projection',
+    from     = 'array',
     children = {left or current_node, self:_parse_projection(bp.star)}
   }
 end
@@ -334,13 +334,13 @@ function Parser:_parse_array_index_expr()
   local parts = {false, false, false}
 
   while true do
-    if self.tokens.cur.type == "colon" then
+    if self.tokens.cur.type == 'colon' then
       pos = pos + 1
     else
       parts[pos] = self.tokens.cur.value
     end
     self.tokens:next(match_next)
-    if self.tokens.cur.type == "rbracket" then break end
+    if self.tokens.cur.type == 'rbracket' then break end
   end
 
   -- Consume the closing bracket
@@ -348,12 +348,12 @@ function Parser:_parse_array_index_expr()
 
   -- If no colons were found then this is a simple index extraction.
   if pos == 1 then
-    return {type = "index", index = parts[1]}
+    return {type = 'index', index = parts[1]}
   elseif pos > 3 then
-    self:_throw("Invalid array slice syntax: too many colons")
+    self:_throw('Invalid array slice syntax: too many colons')
   else
     -- Sliced array from start(e.g., [2:])
-    return {type = "slice", args = parts}
+    return {type = 'slice', args = parts}
   end
 end
 
@@ -363,31 +363,31 @@ function Parser:_parse_multi_select_list()
 
   while true do
     nodes[#nodes + 1] = self:_expr()
-    if self.tokens.cur.type == "comma" then
+    if self.tokens.cur.type == 'comma' then
       self.tokens:next()
-      if self.tokens.cur.type == "rbracket" then
-        self:_throw("Expected expression, found rbracket")
+      if self.tokens.cur.type == 'rbracket' then
+        self:_throw('Expected expression, found rbracket')
       end
     end
-    if self.tokens.cur.type == "rbracket" then break end
+    if self.tokens.cur.type == 'rbracket' then break end
   end
 
   self.tokens:next()
-  return {type = "multi_select_list", children = nodes}
+  return {type = 'multi_select_list', children = nodes}
 end
 
 --- Parses a dot expression with a maximum specified rbp value.
 function Parser:_parse_dot(rbp)
   -- We need special handling for lbracket tokens following dot (multi-select)
-  if self.tokens.cur.type ~= "lbracket" then return self:_expr(rbp) end
+  if self.tokens.cur.type ~= 'lbracket' then return self:_expr(rbp) end
   self.tokens:next()
   return self:_parse_multi_select_list()
 end
 
 --- Throws a valuable error message
 function Parser:_throw(msg)
-  msg = "Syntax error at character " .. self.tokens.cur.pos .. "\n"
-    .. self.expr .. "\n" .. string.rep(" ", self.tokens.cur.pos - 1) .. "^\n"
+  msg = 'Syntax error at character ' .. self.tokens.cur.pos .. '\n'
+    .. self.expr .. '\n' .. string.rep(' ', self.tokens.cur.pos - 1) .. '^\n'
     .. msg
   error(msg)
 end

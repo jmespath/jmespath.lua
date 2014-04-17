@@ -1,7 +1,7 @@
 -- Implements an ordered hash using an array.
 --
---     local ArrayMap = require "jmespath.arraymap"
---     local am = ArrayMap{foo = "bar", baz = "bam"}
+--     local ArrayMap = require 'jmespath.arraymap'
+--     local am = ArrayMap{foo = 'bar', baz = 'bam'}
 --
 -- Because lookups are implemented using an array of tuples representing
 -- key value pairs, array lookups are O(n)
@@ -60,7 +60,7 @@ end
 -- @param k Key to retrieve
 -- @return Returns the corresponding value and the index at which it was found.
 function ArrayMap:get_value(k)
-  local keys = rawget(self, "_keys")
+  local keys = rawget(self, '_keys')
   if keys[k] then return rawget(self, keys[k])[2] end
 end
 

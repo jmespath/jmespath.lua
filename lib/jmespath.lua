@@ -2,15 +2,15 @@
 -- @module jmespath
 
 local jmespath = {
-  _VERSION = "0.1.0",
+  _VERSION = '0.1.0',
   _DESCRIPTION = 'Declaritively extract data from JSON like structures',
   _URL = 'https://github.com/mtdowling/jmespath.lua',
   _LICENSE = 'https://github.com/mtdowling/jmespath.lua/blob/master/LICENSE'
 }
 
-local lexer = require("jmespath.lexer").new()
-local interpreter = require("jmespath.interpreter").new()
-local parser = require("jmespath.parser").new{lexer = lexer}
+local lexer = require('jmespath.lexer').new()
+local interpreter = require('jmespath.interpreter').new()
+local parser = require('jmespath.parser').new{lexer = lexer}
 local cache = {}
 
 --- Searches the provided data using a JMESPath expression

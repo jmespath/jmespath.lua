@@ -1,6 +1,6 @@
 -- Interprets JMESPath ASTs
 --
---     local Interpreter = require "jmespath.interpreter"
+--     local Interpreter = require 'jmespath.interpreter'
 --     local interpreter = Interpreter.new()
 --
 -- The interpreter accepts an optional configuration table that can contain
@@ -18,7 +18,7 @@ local Interpreter = {}
 
 setmetatable(Interpreter, {
   --- Handles invalid ast nodes
-  __index = function(self, key) error("Invalid AST node: " .. key) end,
+  __index = function(self, key) error('Invalid AST node: ' .. key) end,
   -- Allows the interpreter to be constructed using __call
   __call = function() return Interpreter.new() end
 })
@@ -39,12 +39,12 @@ end
 -- @param        data Data to search
 -- @return Returns the evaluated result.
 function Interpreter:visit(node, data)
-  return self["visit_" .. node.type](self, node, data)
+  return self['visit_' .. node.type](self, node, data)
 end
 
 --- Returns a specific field of the current node
 function Interpreter:visit_field(node, data)
-  if type(data) == "table" then return data[node.key] end
+  if type(data) == 'table' then return data[node.key] end
 end
 
 --- Passes the result of the left expression to the right expression
@@ -54,7 +54,7 @@ end
 
 --- Returns a specific index of the current node
 function Interpreter:visit_index(node, data)
-  if type(data) ~= "table" then return nil end
+  if type(data) ~= 'table' then return nil end
   if node.index < 0 then return data[#data + node.index + 1] end
   return data[node.index + 1]
 end
@@ -65,14 +65,14 @@ end
 function Interpreter:visit_projection(node, data)
   local left = self:visit(node.children[1], data)
   -- The left result must be a hash or sequence.
-  if type(left) ~= "table" then return nil end
+  if type(left) ~= 'table' then return nil end
   -- Empty tables should just return the table.
   if next(left) == nil then return left end
 
   -- Don't perform a projection when the expected type is not what we got.
-  if node.from == "object" then
+  if node.from == 'object' then
     if #left > 0 then return nil end
-  elseif node.from == "array" and #left == 0 then
+  elseif node.from == 'array' and #left == 0 then
     return nil
   end
 
@@ -89,7 +89,7 @@ end
 function Interpreter:visit_flatten(node, data)
   local left = self:visit(node.children[1], data)
   -- flatten requires that the left result returns a sequence
-  if type(left) ~= "table" then return nil end
+  if type(left) ~= 'table' then return nil end
   -- Return if empty because we can't differentiate between an array and hash.
   if next(left) == nil then return left end
   -- It is not empty, so ensure that the left result is a sequence table.
@@ -98,7 +98,7 @@ function Interpreter:visit_flatten(node, data)
   local merged = {}
   for _, v in ipairs(left) do
     -- Push everything on that is not a table or is a hash.
-    if type(v) ~= "table" or (next(v) ~= nil and #v == 0) then
+    if type(v) ~= 'table' or (next(v) ~= nil and #v == 0) then
       merged[#merged + 1] = v
     elseif #v > 0 then
       -- Merge up sequence tables into the merged result.
@@ -128,7 +128,7 @@ function Interpreter:visit_or(node, data)
   local result = self:visit(node.children[1], data)
   local t = type(result)
 
-  if not result or result == "" or (t == "table" and next(result) == nil) then
+  if not result or result == '' or (t == 'table' and next(result) == nil) then
     result = self:visit(node.children[2], data)
   end
 

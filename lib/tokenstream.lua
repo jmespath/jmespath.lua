@@ -1,6 +1,6 @@
 -- Implements a stream of tokens, allowing for backtracking
 --
---     local TokenStream = require "jmespath.tokenstream"
+--     local TokenStream = require 'jmespath.tokenstream'
 --     local ts = TokenStream(tokens, expression)
 --
 -- @module jmespath.tokenstream
@@ -47,13 +47,13 @@ function TokenStream:next(valid)
   else
     -- Use an eof token if the position is the last token.
     self.pos = self.pos - 1
-    self.cur = {pos = #self.expr + 1, type = "eof"}
+    self.cur = {pos = #self.expr + 1, type = 'eof'}
   end
 
   if valid and not valid[self.cur.type] then
-    error("Syntax error at " .. self.pos .. ". Found "
-      .. self.cur.type .. " but expected one of: "
-      .. table.concat(table_keys(valid), ", "))
+    error('Syntax error at ' .. self.pos .. '. Found '
+      .. self.cur.type .. ' but expected one of: '
+      .. table.concat(table_keys(valid), ', '))
   end
 end
 
@@ -73,7 +73,7 @@ end
 -- @error Raises an error if no mark position was previously set.
 function TokenStream:backtrack()
   if not self.mark_pos then
-    error("No mark position was set on the token stream")
+    error('No mark position was set on the token stream')
   end
   self.pos = self.mark_pos
   self.cur = self.tokens[self.pos]
