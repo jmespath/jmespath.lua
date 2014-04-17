@@ -27,7 +27,8 @@ end
 --- Creates a new token stream
 -- @tparam table  token Sequence of tokens returned from a lexer
 -- @tparam string expr  The expression that was parsed
-function TokenStream:new(tokens, expr)
+function TokenStream.new(tokens, expr)
+  local self = setmetatable({}, {__index = TokenStream})
   self.tokens = tokens
   self.cur = self.tokens[1]
   self.expr = expr
@@ -64,6 +65,4 @@ function TokenStream:peek(number)
   return self.tokens[self.pos + number] or {pos = #self.expr + 1, type = 'eof'}
 end
 
-return function(...)
-  return TokenStream:new(...)
-end
+return TokenStream

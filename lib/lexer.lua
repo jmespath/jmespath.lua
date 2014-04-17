@@ -143,7 +143,7 @@ function Lexer:tokenize(expression)
     end
   end
 
-  return TokenStream(tokens, expression)
+  return TokenStream.new(tokens, expression)
 end
 
 --- Advances to the next token and modifies the internal state of the lexer.
