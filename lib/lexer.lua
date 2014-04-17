@@ -21,13 +21,18 @@
 -- JSON is needed for decoding tokens
 local TokenStream = require 'jmespath.tokenstream'
 
--- Lexer prototype class that is returned as the module
-local Lexer = {}
-
--- Lexer can be constructed using __call()
-setmetatable(Lexer, {
+local Lexer = setmetatable({}, {
+  -- Lexer can be constructed using __call()
   __call = function() return Lexer.new() end
 })
+
+--- Lexer constructor
+function Lexer.new(config)
+  local self = setmetatable({}, {__index = Lexer})
+  if config then self.json_decode = config.json_decode end
+  self.json_decode = self.json_decode or (require 'dkjson').decode
+  return self
+end
 
 -- Provides a set of tokens used by the lexer
 --
@@ -103,14 +108,6 @@ local tset = (function()
   return t
 end)()
 
---- Initalizes the lexer
-function Lexer.new(config)
-  local self = setmetatable({}, {__index = Lexer})
-  if config then self.json_decode = config.json_decode end
-  self.json_decode = self.json_decode or (require 'dkjson').decode
-  return self
-end
-
 --- Creates a sequence table of tokens for use in a token stream.
 -- @tparam  string      Expression Expression to tokenize
 -- @treturn TokenStream Returns a stream of tokens
@@ -118,11 +115,11 @@ function Lexer:tokenize(expression)
   local tokens = {}
   self.token_iter = expression:gmatch('.')
   self.pos = 0
-  self:_consume()
+  consume(self)
 
   while self.c do
     if tset.identifier_start[self.c] then
-      tokens[#tokens + 1] = self:_consume_identifier()
+      tokens[#tokens + 1] = consume_identifier(self)
     elseif tset.simple[self.c] then
       if tset.simple[self.c] ~= 'ws' then
         tokens[#tokens + 1] = {
@@ -131,19 +128,19 @@ function Lexer:tokenize(expression)
           value = self.c
         }
       end
-      self:_consume()
+      consume(self)
     elseif tset.numbers[self.c] or self.c == '-' then
-      tokens[#tokens + 1] = self:_consume_number()
+      tokens[#tokens + 1] = consume_number(self)
     elseif self.c == '[' then
-      tokens[#tokens + 1] = self:_consume_lbracket()
+      tokens[#tokens + 1] = consume_lbracket(self)
     elseif tset.operator_start[self.c] then
-      tokens[#tokens + 1] = self:_consume_operator()
+      tokens[#tokens + 1] = consume_operator(self)
     elseif self.c == '|' then
-      tokens[#tokens + 1] = self:_consume_pipe()
+      tokens[#tokens + 1] = consume_pipe(self)
     elseif self.c == '"' then
-      tokens[#tokens + 1] = self:_consume_quoted_identifier()
+      tokens[#tokens + 1] = consume_quoted_identifier(self)
     elseif self.c == '`' then
-      tokens[#tokens + 1] = self:_consume_literal()
+      tokens[#tokens + 1] = consume_literal(self)
     else
       error('Unexpected character ' .. self.c .. ' found at #' .. self.pos)
     end
@@ -153,36 +150,34 @@ function Lexer:tokenize(expression)
 end
 
 --- Advances to the next token and modifies the internal state of the lexer.
-function Lexer:_consume()
-  self.c = self.token_iter()
-  if self.c ~= '' then self.pos = self.pos + 1 end
+function consume(lexer)
+  lexer.c = lexer.token_iter()
+  if lexer.c ~= '' then lexer.pos = lexer.pos + 1 end
 end
 
 --- Consumes an identifier token /[A-Za-z0-9_\-]/
--- @treturn table Returns the identifier token
-function Lexer:_consume_identifier()
-  local buffer = {self.c}
-  local start = self.pos
-  self:_consume()
+function consume_identifier(lexer)
+  local buffer = {lexer.c}
+  local start = lexer.pos
+  consume(lexer)
 
-  while tset.identifiers[self.c] do
-    buffer[#buffer + 1] = self.c
-    self:_consume()
+  while tset.identifiers[lexer.c] do
+    buffer[#buffer + 1] = lexer.c
+    consume(lexer)
   end
 
   return {pos = start, type = 'identifier', value = table.concat(buffer)}
 end
 
 --- Consumes a number token /[0-9\-]/
--- @treturn table Returns the number token
-function Lexer:_consume_number()
-  local buffer = {self.c}
-  local start = self.pos
-  self:_consume()
+function consume_number(lexer)
+  local buffer = {lexer.c}
+  local start = lexer.pos
+  consume(lexer)
 
-  while tset.numbers[self.c] do
-    buffer[#buffer + 1] = self.c
-    self:_consume()
+  while tset.numbers[lexer.c] do
+    buffer[#buffer + 1] = lexer.c
+    consume(lexer)
   end
 
   return {
@@ -193,33 +188,32 @@ function Lexer:_consume_number()
 end
 
 --- Consumes a flatten token, lbracket, and filter token: '[]', '[?', and '['
--- @treturn table Returns the token
-function Lexer:_consume_lbracket()
-  self:_consume()
-  if self.c == ']' then
-    self:_consume()
-    return {pos = self.pos - 1, type = 'flatten', value = '[]'}
-  elseif self.c == '?' then
-    self:_consume()
-    return {pos = self.pos - 1, type = 'filter', value = '[?'}
+function consume_lbracket(lexer)
+  consume(lexer)
+
+  if lexer.c == ']' then
+    consume(lexer)
+    return {pos = lexer.pos - 1, type = 'flatten', value = '[]'}
+  elseif lexer.c == '?' then
+    consume(lexer)
+    return {pos = lexer.pos - 1, type = 'filter', value = '[?'}
   else
-    return {pos = self.pos - 1, type = 'lbracket', value = '['}
+    return {pos = lexer.pos - 1, type = 'lbracket', value = '['}
   end
 end
 
 --- Consumes an operation <, >, !, !=, ==
--- @treturn table Returns the token
-function Lexer:_consume_operator()
+function consume_operator(lexer)
   local token = {
     type  = 'comparator',
-    pos   = self.pos,
-    value = self.c
+    pos   = lexer.pos,
+    value = lexer.c
   }
 
-  self:_consume()
+  consume(lexer)
 
-  if self.c == '=' then
-    self:_consume()
+  if lexer.c == '=' then
+    consume(lexer)
     token.value = token.value .. '='
   elseif token.value == '=' then
     error('Expected ==, got =')
@@ -233,17 +227,16 @@ function Lexer:_consume_operator()
 end
 
 --- Consumes an or, '||', and pipe, '|' token
--- @treturn table Returns the token
-function Lexer:_consume_pipe()
-  self:_consume()
+function consume_pipe(lexer)
+  consume(lexer)
 
-  if self.c ~= '|' then
-    return {type = 'pipe', value = '|', pos = self.pos - 1};
+  if lexer.c ~= '|' then
+    return {type = 'pipe', value = '|', pos = lexer.pos - 1};
   end
 
-  self:_consume()
+  consume(lexer)
 
-  return {type = 'or', value = '||', pos = self.pos - 2};
+  return {type = 'or', value = '||', pos = lexer.pos - 2};
 end
 
 --- Parse a string of tokens inside of a delimiter.
@@ -257,32 +250,31 @@ local function parse_inside(lexer, wrapper, skip_ws)
   local buffer = {}
 
   -- Consume the leading character
-  lexer:_consume()
+  consume(lexer)
 
   while lexer.c and not (lexer.c == wrapper and last ~= '\\') do
     last = lexer.c
     if not skip_ws or last ~= ' ' then
       buffer[#buffer + 1] = lexer.c
     end
-    lexer:_consume()
+    consume(lexer)
   end
 
-  lexer:_consume()
+  consume(lexer)
 
   return {value = table.concat(buffer), pos = p}
 end
 
 --- Consumes a literal token.
--- @treturn table Returns the token
-function Lexer:_consume_literal()
-  local token = parse_inside(self, '`', true)
+function consume_literal(lexer)
+  local token = parse_inside(lexer, '`', true)
   local first_char = token.value:sub(1, 1)
   token.type = 'literal'
 
   if tset.json_decode_char[first_char] or
     tset.json_numbers[first_char]
   then
-    token.value = self.json_decode(token.value)
+    token.value = lexer.json_decode(token.value)
   elseif token.value == 'null' then
     token.value = nil
   elseif token.value == 'true' then
@@ -290,18 +282,17 @@ function Lexer:_consume_literal()
   elseif token.value == 'false' then
     token.value = false
   else
-    token.value = self.json_decode('"' .. token.value .. '"')
+    token.value = lexer.json_decode('"' .. token.value .. '"')
   end
 
   return token
 end
 
 --- Consumes a quoted string.
--- @treturn table Returns the token
-function Lexer:_consume_quoted_identifier()
-  local token = parse_inside(self, '"')
+function consume_quoted_identifier(lexer)
+  local token = parse_inside(lexer, '"')
   token.type = 'quoted_identifier'
-  token.value = self.json_decode('"' .. token.value.. '"')
+  token.value = lexer.json_decode('"' .. token.value.. '"')
   return token
 end
 
