@@ -249,11 +249,14 @@ local function parse_inside(lexer, wrapper, skip_ws)
   -- Consume the leading character
   consume(lexer)
 
+  -- Removing leading whitespace
+  if skip_ws then
+    while lexer.c == ' ' do consume(lexer) end
+  end
+
   while lexer.c and not (lexer.c == wrapper and last ~= '\\') do
     last = lexer.c
-    if not skip_ws or last ~= ' ' then
-      buffer[#buffer + 1] = lexer.c
-    end
+    buffer[#buffer + 1] = lexer.c
     consume(lexer)
   end
 
