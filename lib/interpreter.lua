@@ -144,8 +144,8 @@ local visitors = {
     if data == nil then return nil end
     local collected = {}
 
-    for k, v in ipairs(node.children) do
-      collected[#collected + 1] = interpreter:visit(v, value)
+    for _, v in pairs(node.children) do
+      collected[#collected + 1] = interpreter:visit(v, data)
     end
 
     return collected
