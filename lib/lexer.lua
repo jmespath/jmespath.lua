@@ -243,7 +243,6 @@ end
 -- @treturn table   Returns the start of a token
 local function parse_inside(lexer, wrapper, skip_ws)
   local p = lexer.pos
-  local last = '\\'
   local buffer = {}
 
   -- Consume the leading character
@@ -254,8 +253,11 @@ local function parse_inside(lexer, wrapper, skip_ws)
     while lexer.c == ' ' do consume(lexer) end
   end
 
-  while lexer.c and not (lexer.c == wrapper and last ~= '\\') do
-    last = lexer.c
+  while lexer.c and lexer.c ~= wrapper do
+    if lexer.c == "\\" then
+      consume(lexer)
+      buffer[#buffer + 1] = "\\"
+    end
     buffer[#buffer + 1] = lexer.c
     consume(lexer)
   end
