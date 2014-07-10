@@ -174,12 +174,8 @@ local visitors = {
     end
   end,
 
-  --- Returns the result of a funciton
+  --- Returns the result of a function call
   ["function"] = function(interpreter, node, data)
-  end,
-
-  --- Returns the result of a string or array slice
-  slice = function(interpreter, node, data)
   end,
 
   --- Returns an expression node
