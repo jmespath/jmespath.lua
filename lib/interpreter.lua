@@ -196,9 +196,4 @@ function Interpreter:visit(node, data)
   return visitors[node.type](self, node, data)
 end
 
-return setmetatable(Interpreter, {
-  --- Handles invalid ast nodes
-  __index = function(self, key) error('Invalid AST node: ' .. key) end,
-  -- Allows the interpreter to be constructed using __call
-  __call = function() return Interpreter.new() end
-})
+return Interpreter

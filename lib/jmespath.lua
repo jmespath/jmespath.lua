@@ -10,7 +10,7 @@ local jmespath = {
 
 local lexer = require('jmespath.lexer').new()
 local interpreter = require('jmespath.interpreter').new()
-local parser = require('jmespath.parser').new{lexer = lexer}
+local parser = require('jmespath.parser').new(lexer)
 local cache = {}
 
 --- Searches the provided data using a JMESPath expression

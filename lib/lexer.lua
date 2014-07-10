@@ -298,7 +298,4 @@ function consume_quoted_identifier(lexer)
   return token
 end
 
-return setmetatable(Lexer, {
-  -- Lexer can be constructed using __call()
-  __call = function() return Lexer.new() end
-})
+return Lexer

@@ -14,10 +14,10 @@
 local Parser = {}
 
 --- Creates a new parser
--- @tparam table config Accepts an optional lexer key
-function Parser.new(config)
+-- @tparam Lexer
+function Parser.new(lexer)
   local self = setmetatable({}, {__index = Parser})
-  self.lexer = (config and config.lexer) or require('jmespath.lexer').new()
+  self.lexer = lexer or require('jmespath.lexer').new()
   return self
 end
 
@@ -420,7 +420,4 @@ function throw(parser, msg)
   error(msg)
 end
 
-return setmetatable(Parser, {
-  -- Allows the parser to be constructed using a factory method via __call()
-  __call = function() return Parser.new() end
-})
+return Parser
