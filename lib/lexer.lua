@@ -18,9 +18,6 @@
 -- @module jmespath.lexer
 -- @alias Lexer
 
--- JSON is needed for decoding tokens
-local TokenStream = require 'jmespath.tokenstream'
-
 local Lexer = {}
 
 --- Lexer constructor
@@ -107,7 +104,7 @@ end)()
 
 --- Creates a sequence table of tokens for use in a token stream.
 -- @tparam  string      Expression Expression to tokenize
--- @treturn TokenStream Returns a stream of tokens
+-- @treturn table Returns a sequence table of tokens
 function Lexer:tokenize(expression)
   local tokens = {}
   self.token_iter = expression:gmatch('.')
@@ -143,7 +140,10 @@ function Lexer:tokenize(expression)
     end
   end
 
-  return TokenStream.new(tokens, expression)
+  -- Always end with an EOF token
+  tokens[#tokens + 1] = {type = 'eof', pos = self.pos, value = ''}
+
+  return tokens
 end
 
 --- Advances to the next token and modifies the internal state of the lexer.

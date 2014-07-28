@@ -20,31 +20,27 @@ describe('jmespath', function()
   end)
 
   it("tokenizes", function()
-    local stream = jmespath.tokenize("foo.bar")
+    local tokens = jmespath.tokenize("foo.bar")
 
-    stream:next()
     assert.are.same({
       type = "identifier",
       pos = 1,
       value = "foo"
-    }, stream.cur)
+    }, tokens[1])
 
-    stream:next()
     assert.are.same({
       type = "dot",
       pos = 4,
       value = "."
-    }, stream.cur)
+    }, tokens[2])
 
-    stream:next()
     assert.are.same({
       type = "identifier",
       pos = 5,
       value = "bar"
-    }, stream.cur)
+    }, tokens[3])
 
-    stream:next()
-    assert.are.same({type = "eof", pos = 8}, stream.cur)
+    assert.are.same({type = "eof", pos = 8, value = ''}, tokens[4])
   end)
 
 end)
