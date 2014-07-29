@@ -13,8 +13,7 @@ description = {
 }
 
 dependencies = {
-   "lua >= 5.1",
-   "dkjson"
+   "lua >= 5.1"
 }
 
 build = {
@@ -24,6 +23,6 @@ build = {
       ["jmespath.lexer"] = "lib/lexer.lua",
       ["jmespath.parser"] = "lib/parser.lua",
       ["jmespath.interpreter"] = "lib/interpreter.lua",
-      ["jmespath.arraymap"] = "lib/arraymap.lua",
+      ["jmespath.json"] = "lib/json.lua",
    }
 }
