@@ -48,27 +48,6 @@ function Parser:peek()
   end
 end
 
---- Parses an expression.
--- @tparam  string expression Expression to parse into an AST
--- @treturn table  Returns the parsed AST as a table of table nodes.
--- @error   Raises an error when an invalid expression is provided.
-function Parser:parse(expression)
-  self.expr = expression
-  self.tokens = self.lexer:tokenize(expression)
-  -- Advance to the first token
-  self.pos = 0
-  self:advance()
-
-  local ast = expr(self, 0)
-
-  if self.token.type ~= 'eof' then
-    throw(self, 'Encountered an unexpected "' .. self.token.type
-      .. '" token and did not reach the end of the token stream.')
-  end
-
-  return ast
-end
-
 -- Token binding precedence table
 local bp = {
   eof               = 0,
@@ -108,6 +87,18 @@ local after_dot = {
 
 -- Hash of token handlers
 local parselets = {}
+
+--- Main expression parsing function
+local function expr(parser, rbp)
+  rbp = rbp or 0
+  local left = parselets['nud_' .. parser.token.type](parser)
+
+  while rbp < bp[parser.token.type] do
+    left = parselets['led_' .. parser.token.type](parser, left)
+  end
+
+  return left
+end
 
 --- Parses a leading identifier token (e.g., foo)
 parselets.nud_identifier = function(parser)
@@ -186,9 +177,115 @@ parselets.nud_filter = function(parser)
   return parselets.led_filter(parser, current_node)
 end
 
+--- Parses a multi-select-list (e.g., [foo, baz, bar])
+local function parse_multi_select_list(parser)
+  local nodes = {}
+
+  while true do
+    nodes[#nodes + 1] = expr(parser)
+    if parser.token.type == 'comma' then
+      parser:advance()
+      if parser.token.type == 'rbracket' then
+        throw(parser, 'Expected expression, found rbracket')
+      end
+    end
+    if parser.token.type == 'rbracket' then break end
+  end
+
+  parser:advance()
+  return {type = 'multi_select_list', children = nodes}
+end
+
+--- Parses a dot expression with a maximum specified rbp value.
+local function parse_dot(parser, rbp)
+  if not after_dot[parser.token.type] then
+    throw(parser, "Invalid token after dot")
+  end
+
+  -- We need special handling for lbracket tokens following dot (multi-select)
+  if parser.token.type ~= 'lbracket' then
+    return expr(parser, rbp)
+  end
+
+  parser:advance()
+
+  return parse_multi_select_list(parser)
+end
+
+--- Parses a projection and accounts for permutations and syntax errors.
+-- @error Raises an error when an invalid projection is provided.
+local function parse_projection(parser, rbp)
+  local t = parser.token.type
+  if bp[t] < 10 then
+    return current_node
+  elseif t == 'dot' then
+    parser:advance(after_dot)
+    return parse_dot(parser, rbp)
+  elseif t == 'lbracket' then
+    return expr(parser, rbp)
+  else
+    throw(parser, 'Syntax error after projection')
+  end
+end
+
+--- Parses a wildcard object token (used by bot nud and led tokens).
+local function parse_wildcard_object(parser, left)
+  parser:advance()
+  return {
+    type     = 'object_projection',
+    children = {
+      left or current_node,
+      parse_projection(parser, bp.star)
+    }
+  }
+end
+
 --- Parses a star token with no leading token (e.g., *, foo | *)
 parselets.nud_star = function(parser)
   return parse_wildcard_object(parser, current_node)
+end
+
+--- Parses a wildcard array token (used by bot nud and led tokens).
+local function parse_wildcard_array(parser, left)
+  parser:advance({rbracket = true})
+  parser:advance()
+  return {
+    type     = 'array_projection',
+    children = {
+      left or current_node,
+      parse_projection(parser, bp.star)
+    }
+  }
+end
+
+--- Parses both normal index access and slice access
+local function parse_array_index_expr(parser)
+  local match_next = {number = true, colon = true, rbracket = true}
+  local pos = 1
+  local parts = {false, false, false}
+
+  while true do
+    if parser.token.type == 'colon' then
+      pos = pos + 1
+    else
+      parts[pos] = parser.token.value
+    end
+    parser:advance(match_next)
+    if parser.token.type == 'rbracket' then break end
+  end
+
+  -- Consume the closing bracket
+  parser:advance()
+
+  -- If no colons were found then this is a simple index extraction.
+  if pos == 1 then
+    return {type = 'index', index = parts[1]}
+  elseif pos > 3 then
+    throw(parser, 'Invalid array slice syntax: too many colons')
+  else
+    -- Sliced array from start(e.g., [2:])
+    return {type = 'slice', args = parts}
+  end
 end
 
 --- Parses an lbracket token with no leading expression (e.g., [0])
@@ -228,8 +325,7 @@ end
 parselets.led_flatten = function(parser, left)
   parser:advance()
   return {
-    type = 'projection',
-    from = 'array',
+    type = 'array_projection',
     children = {
       {type = 'flatten', children = {left}},
       parse_projection(parser, bp.flatten)
@@ -284,8 +380,7 @@ parselets.led_filter = function(parser, left)
   local rhs = parse_projection(parser, bp.filter)
 
   return {
-    type = 'projection',
-    from = 'array',
+    type = 'array_projection',
     children = {
       left or current_node,
       {type = 'condition', children = {expression, rhs}}
@@ -321,133 +416,34 @@ setmetatable(parselets, {
   end
 })
 
---- Main expression parsing function
-function expr(parser, rbp)
-  rbp = rbp or 0
-  local left = parselets['nud_' .. parser.token.type](parser)
-
-  while rbp < bp[parser.token.type] do
-    left = parselets['led_' .. parser.token.type](parser, left)
-  end
-
-  return left
-end
-
---- Parses a projection and accounts for permutations and syntax errors.
--- @error Raises an error when an invalid projection is provided.
-function parse_projection(parser, rbp)
-  local t = parser.token.type
-  if bp[t] < 10 then
-    return current_node
-  elseif t == 'dot' then
-    parser:advance(after_dot)
-    return parse_dot(parser, rbp)
-  elseif t == 'lbracket' then
-    return expr(parser, rbp)
-  else
-    throw(parser, 'Syntax error after projection')
-  end
-end
-
---- Parses a wildcard object token (used by bot nud and led tokens).
-function parse_wildcard_object(parser, left)
-  parser:advance()
-  return {
-    type     = 'projection',
-    from     = 'object',
-    children = {
-      left or current_node,
-      parse_projection(parser, bp.star)
-    }
-  }
-end
-
---- Parses a wildcard array token (used by bot nud and led tokens).
-function parse_wildcard_array(parser, left)
-  parser:advance({rbracket = true})
-  parser:advance()
-  return {
-    type     = 'projection',
-    from     = 'array',
-    children = {
-      left or current_node,
-      parse_projection(parser, bp.star)
-    }
-  }
-end
-
---- Parses both normal index access and slice access
-function parse_array_index_expr(parser)
-  local match_next = {number = true, colon = true, rbracket = true}
-  local pos = 1
-  local parts = {false, false, false}
-
-  while true do
-    if parser.token.type == 'colon' then
-      pos = pos + 1
-    else
-      parts[pos] = parser.token.value
-    end
-    parser:advance(match_next)
-    if parser.token.type == 'rbracket' then break end
-  end
-
-  -- Consume the closing bracket
-  parser:advance()
-
-  -- If no colons were found then this is a simple index extraction.
-  if pos == 1 then
-    return {type = 'index', index = parts[1]}
-  elseif pos > 3 then
-    throw(parser, 'Invalid array slice syntax: too many colons')
-  else
-    -- Sliced array from start(e.g., [2:])
-    return {type = 'slice', args = parts}
-  end
-end
-
---- Parses a multi-select-list (e.g., [foo, baz, bar])
-function parse_multi_select_list(parser)
-  local nodes = {}
-
-  while true do
-    nodes[#nodes + 1] = expr(parser)
-    if parser.token.type == 'comma' then
-      parser:advance()
-      if parser.token.type == 'rbracket' then
-        throw(parser, 'Expected expression, found rbracket')
-      end
-    end
-    if parser.token.type == 'rbracket' then break end
-  end
-
-  parser:advance()
-  return {type = 'multi_select_list', children = nodes}
-end
-
---- Parses a dot expression with a maximum specified rbp value.
-function parse_dot(parser, rbp)
-  if not after_dot[parser.token.type] then
-    throw(parser, "Invalid token after dot")
-  end
-
-  -- We need special handling for lbracket tokens following dot (multi-select)
-  if parser.token.type ~= 'lbracket' then
-    return expr(parser, rbp)
-  end
-
-  parser:advance()
-
-  return parse_multi_select_list(parser)
-end
-
 --- Throws a valuable error message
-function throw(parser, msg)
+local function throw(parser, msg)
   msg = 'Syntax error at character ' .. parser.token.pos .. '\n'
     .. parser.expr .. '\n'
     .. string.rep(' ', parser.token.pos - 1) .. '^\n'
     .. msg
   error(msg)
+end
+
+--- Parses an expression.
+-- @tparam  string expression Expression to parse into an AST
+-- @treturn table  Returns the parsed AST as a table of table nodes.
+-- @error   Raises an error when an invalid expression is provided.
+function Parser:parse(expression)
+  self.expr = expression
+  self.tokens = self.lexer:tokenize(expression)
+  -- Advance to the first token
+  self.pos = 0
+  self:advance()
+
+  local ast = expr(self, 0)
+
+  if self.token.type ~= 'eof' then
+    throw(self, 'Encountered an unexpected "' .. self.token.type
+      .. '" token and did not reach the end of the token stream.')
+  end
+
+  return ast
 end
 
 return Parser

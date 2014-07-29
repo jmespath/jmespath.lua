@@ -262,6 +262,11 @@ local function parse_inside(lexer, wrapper, skip_ws)
     consume(lexer)
   end
 
+  if lexer.c ~= wrapper then
+    error('Expected `' .. wrapper .. "` but found "
+          .. tostring(lexer.c) .. ' at character #' .. lexer.pos)
+  end
+
   consume(lexer)
 
   return {value = table.concat(buffer), pos = p}

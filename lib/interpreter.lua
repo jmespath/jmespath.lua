@@ -51,22 +51,46 @@ local visitors = {
     return data[node.index + 1]
   end,
 
-  --- Interprets a projection node, passing the values of the left child
-  -- through the values of the right child and aggregating the non-null
-  -- results into the return value.
-  projection = function(interpreter, node, data)
+  --- Interprets an object projection node
+  object_projection = function(interpreter, node, data)
     local left = interpreter:visit(node.children[1], data)
     -- The left result must be a hash or sequence.
     if type(left) ~= 'table' then return nil end
     -- Empty tables should just return the table.
     if next(left) == nil then return left end
+    -- Don't perform an object projection on an array
+    if #left > 0 then return nil end
 
-    -- Don't perform a projection when the expected type is not what we got.
-    if node.from == 'object' then
-      if #left > 0 then return nil end
-    elseif node.from == 'array' and #left == 0 then
-      return nil
+    local collected = {}
+    local m = getmetatable(left)
+    local order
+
+    -- Determine the key order if possible
+    if m and m.__jsonorder then
+      order = m.__jsonorder
+    else
+      order = {}
+      for k, _ in pairs(left) do order[#order + 1] = k end
     end
+
+    for _, v in ipairs(order) do
+      local value = left[v]
+      local result = interpreter:visit(node.children[2], value)
+      if result ~= nil then collected[#collected + 1] = result end
+    end
+
+    return collected
+  end,
+
+  --- Interprets an array projection
+  array_projection = function(interpreter, node, data)
+    local left = interpreter:visit(node.children[1], data)
+    -- The left result must be a hash or sequence.
+    if type(left) ~= 'table' then return nil end
+    -- Empty tables should just return the table.
+    if next(left) == nil then return left end
+    -- Don't perform an array on an object
+    if #left == 0 then return nil end
 
     local collected = {}
     for _, v in pairs(left) do
@@ -143,9 +167,11 @@ local visitors = {
   multi_select_list = function(interpreter, node, data)
     if data == nil then return nil end
     local collected = {}
+    local n = 0
 
     for _, v in pairs(node.children) do
-      collected[#collected + 1] = interpreter:visit(v, data)
+      n = n + 1
+      collected[n] = interpreter:visit(v, data)
     end
 
     return collected
@@ -154,13 +180,14 @@ local visitors = {
   --- Returns a hash table of results
   multi_select_hash = function(interpreter, node, data)
     if data == nil then return nil end
-    local collected = interpreter.hashfn()
+    local collected, order = interpreter.hashfn(), {}
 
     for _, v in ipairs(node.children) do
       collected[v.key] = interpreter:visit(v.children[1], data)
+      order[#order + 1] = collected[v.key]
     end
 
-    return collected
+    return setmetatable(collected, {__jsonorder = order})
   end,
 
   --- Evaluates a comparison
