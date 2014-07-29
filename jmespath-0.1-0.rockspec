@@ -13,7 +13,8 @@ description = {
 }
 
 dependencies = {
-   "lua >= 5.1"
+   "lua >= 5.1",
+   "lpeg >= 0.12"
 }
 
 build = {

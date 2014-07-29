@@ -1,6 +1,6 @@
 local jmespath = require "jmespath"
 local lfs = require "lfs"
-local json = require "dkjson"
+local json = require "jmespath.json"
 
 local function jcmp(a, b)
 
