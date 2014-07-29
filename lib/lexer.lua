@@ -3,28 +3,15 @@
 --     local Lexer = require 'jmespath.lexer'
 --     local lexer = Lexer.new()
 --
--- The lexer requires the ability to decode JSON strings into Lua tables and
--- primitives. You can pass in a custom JSON decode function by providing a
--- function in the 'json_decode' option of the Lexer's configuration table
--- constructor. This function accepts a string of JSON and must return the
--- parsed Lua representation. In order for various aspects of JMESPath to work
--- correctly, it is expected that 'null' is decoded into Lua nils.
---
---     local lexer = Lexer.new{json_decode = cjson.decode}
---
--- If no JSON decode function is provided, then the lexer will attempt to use
--- dkjson.
---
 -- @module jmespath.lexer
 -- @alias Lexer
 
 local Lexer = {}
+local json = require 'jmespath.json'
 
 --- Lexer constructor
-function Lexer.new(config)
+function Lexer.new()
   local self = setmetatable({}, {__index = Lexer})
-  if config then self.json_decode = config.json_decode end
-  self.json_decode = self.json_decode or (require 'dkjson').decode
   return self
 end
 
@@ -281,7 +268,7 @@ function consume_literal(lexer)
   if tset.json_decode_char[first_char] or
     tset.json_numbers[first_char]
   then
-    token.value = lexer.json_decode(token.value)
+    token.value = json.decode(token.value)
   elseif token.value == 'null' then
     token.value = nil
   elseif token.value == 'true' then
@@ -289,7 +276,7 @@ function consume_literal(lexer)
   elseif token.value == 'false' then
     token.value = false
   else
-    token.value = lexer.json_decode('"' .. token.value .. '"')
+    token.value = json.decode('"' .. token.value .. '"')
   end
 
   return token
@@ -299,7 +286,7 @@ end
 function consume_quoted_identifier(lexer)
   local token = parse_inside(lexer, '"')
   token.type = 'quoted_identifier'
-  token.value = lexer.json_decode('"' .. token.value.. '"')
+  token.value = json.decode('"' .. token.value.. '"')
   return token
 end
 
