@@ -12,7 +12,8 @@ end
 
 function fn_avg(args)
   validate('avg', args, {{'array'}})
-  -- @TODO
+  if not #args[1] then return nil end
+  return fn_sum(args) / #args[1]
 end
 
 function fn_ceil(args)
@@ -23,7 +24,7 @@ end
 function fn_contains(args)
   validate('contains', args, {{'string', 'array'}, {'any'}})
   if type(args[1]) == 'table' then
-    return in_table(args[1], args[2])
+    return Functions.in_table(args[2], args[1])
   end
   return string.find(args[1], args[2]) ~= nil
 end
@@ -39,16 +40,18 @@ function fn_floor(args)
 end
 
 function fn_join(args)
-  validate('join', args, {{'array'}})
-  -- @TODO
+  validate('join', args, {{'array'}, {'string'}})
+  local fn = function (carry, item, index)
+    if index == 1 then return item end
+    return carry .. args[2] .. item
+  end
+  return typed_reduce('join:0', args[1], {'string'}, fn)
 end
 
 function fn_keys(args)
   validate('keys', args, {{'object'}})
   local keys = {}
-  for k, _ in pairs(args[1]) do
-    keys[#keys + 1] = k
-  end
+  for k, _ in pairs(args[1]) do keys[#keys + 1] = k end
   return keys
 end
 
@@ -66,22 +69,42 @@ end
 
 function fn_max(args)
   validate('max', args, {{'array'}})
-  -- @TODO
+  local fn = function (carry, item, index)
+    if index > 1 and carry >= item then return carry end
+    return item
+  end
+  return typed_reduce('max:0', args[1], {'number', 'string'}, fn)
 end
 
 function fn_max_by(args)
-  validate('max_by', args, {{'array'}})
-  -- @TODO
+  validate('max_by', args, {{'array'}, {'expression'}})
+  local expr = wrap_expr('max_by:1', args[2], {'number', 'string'})
+  local fn = function (carry, item, index)
+    if index == 1 then return item end
+    if expr(carry) >= expr(item) then return carry end
+    return item
+  end
+  return typed_reduce('max_by:1', args[1], {'any'}, fn)
 end
 
 function fn_min(args)
   validate('min', args, {{'array'}})
-  -- @TODO
+  local fn = function (carry, item)
+    if index > 1 and carry <= item then return carry end
+    return item
+  end
+  return typed_reduce('min:0', args[1], {'number', 'string'}, fn)
 end
 
 function fn_min_by(args)
   validate('min_by', args, {{'array'}})
-  -- @TODO
+  local expr = wrap_expr('min_by:1', args[2], {'number', 'string'})
+  local fn = function (carry, item, index)
+    if index == 1 then return item end
+    if expr(carry) <= expr(item) then return carry end
+    return item
+  end
+  return typed_reduce('min_by:1', args[1], {'any'}, fn)
 end
 
 function fn_reverse(args)
@@ -89,28 +112,37 @@ function fn_reverse(args)
   if type(args[1]) == 'string' then
     return string.reverse(args[1])
   end
-  local reversed = {}
-  local items = #args[1]
-  for k, v in ipairs(args[1]) do
-    reversed[items + 1 - k] = v
-  end
+  local reversed, items = {}, #args[1]
+  for k, v in ipairs(args[1]) do reversed[items + 1 - k] = v end
   return reversed
 end
 
 function fn_sort(args)
   validate('sort', args, {{'array'}})
-  table.sort(args[1])
-  return args[1]
+  local valid = {'string', 'number'}
+  return Functions.stable_sort(args[1], function (a, b)
+    validate_seq('sort:0', valid, a, b)
+    return sortfn(a, b)
+  end)
 end
 
 function fn_sort_by(args)
-  validate('sort_by', args, {{'array'}})
-  -- @TODO
+  validate('sort_by', args, {{'array'}, {'expression'}})
+  local expr, valid = args[2], {'string', 'number'}
+  return Functions.stable_sort(args[1], function (a, b)
+    local va, vb = expr(a), expr(b)
+    validate_seq('sort_by:0', valid, va, vb)
+    return sortfn(va, vb)
+  end)
 end
 
 function fn_sum(args)
   validate('sum', args, {{'array'}})
-  -- @TODO
+  local fn = function (carry, item, index)
+    if index > 1 then return carry + item end
+    return item
+  end
+  return typed_reduce('sum:0', args[1], {'number'}, fn)
 end
 
 function fn_starts_with(args)
@@ -198,13 +230,6 @@ function type_error(from, msg)
   error('Argument ' .. from .. ' ' .. msg)
 end
 
-function in_table(t, search)
-  for _, value in pairs(t) do
-    if value == search then return true end
-  end
-  return false
-end
-
 function validate(from, args, types)
   validate_arity(from, #args, #types)
   for k, v in pairs(args) do
@@ -216,8 +241,8 @@ end
 
 function validate_type(from, value, types)
   if types[1] == 'any'
-    or in_table(types, Functions.type(value))
-    or (value == {} and type == {'array'})
+    or Functions.in_table(Functions.type(value), types)
+    or (value == {} and Functions.in_table('array', types))
   then
     return
   end
@@ -227,17 +252,117 @@ function validate_type(from, value, types)
 end
 
 function validate_seq(from, types, a, b)
-  -- @TODO
+  local ta, tb = Functions.type(a), Functions.type(b)
+  if ta ~= tb then
+    type_error(from, 'encountered a type mismatch in sequence: ' .. ta .. ', ' .. tb)
+  end
+  local match = (#types and types[1] == 'any')
+    or Functions.in_table(ta, types)
+  if not match then
+    type_error(from, 'encountered a type error in sequence. The argument must '
+      .. 'be an array of ' .. table.concat(types, '|') .. ' types. Found '
+      .. ta .. ', ' .. tb)
+  end
 end
 
+--- Reduces a table to a single value while validating the sequence types
+-- @param string   from  'function:position'
+-- @param table    tbl   Table to reduce
+-- @param table    types Valid types
+-- @param function func  Reduce function
+function typed_reduce(from, tbl, types, func)
+  return Functions.reduce(tbl, function (carry, item, index)
+    if index > 1 then validate_seq(from, types, carry, item) end
+    return func(carry, item, index)
+  end)
+end
+
+--- Returns a composed function that validates the return value
+-- @param string   from  'function:position'
+-- @param function expr  Function to wrap
+-- @param table    types Valid types
+function wrap_expr(from, expr, types)
+  from = 'The expression return value of ' .. from
+  return function (value)
+    value = expr(value)
+    validate_type(from, value, types)
+    return value
+  end
+end
+
+--- Implements a sort function that returns 0, 1, or -1
+-- @param string|number a Left value
+-- @param string|number b Right value
+-- @return number
+function sortfn(a, b)
+  if a == b then return 0 end
+  if a < b then return -1 end
+  return 1
+end
+
+--- Check if the search value is in table t
+-- @param mixed search Value to find
+-- @param table t      Table to search
+-- @return bool
+function Functions.in_table(search, t)
+  for _, value in pairs(t) do
+    if value == search then return true end
+  end
+  return false
+end
+
+--- Reduces a table using a callback function
+-- @param table    tbl     Table to reduce
+-- @param function func    Reduce function that accepts (carry, item)
+-- @param mixed    initial Optionally provide an initial carry value.
+function Functions.reduce(tbl, func, initial)
+  local carry = initial
+  for index, item in pairs(tbl) do
+    carry = func(carry, item, index)
+  end
+  return carry
+end
+
+--- Determines if the given value is a JMESPath object
+-- @param mixed value
+-- @return bool
 function Functions.is_object(value)
   return #value == 0
 end
 
+--- Determines if the given value is a JMESPath array
+-- @param mixed value
+-- @return bool
 function Functions.is_array(value)
   return #value > 0
 end
 
+--- Implements a stable sort using a sort function
+-- @param table    data Data to sort
+-- @param function func Accepts a, b and returns -1, 0, or 1.
+-- @return table
+function Functions.stable_sort(data, func)
+  -- Decorate each item by creating an array of [value, index]
+  local wrapped, sorted = {}, {}
+  for k, v in pairs(data) do wrapped[#wrapped + 1] = {v, k} end
+  -- Sort by the sort function and use the index as a tie-breaker
+  table.sort(wrapped, function (a, b)
+    local result = func(a[1], b[1])
+    if result == 0 then
+      return a[2] < b[2]
+    end
+    return result == -1
+  end)
+  -- Undecorate each item and return the resulting sorted array
+  for _, v in pairs(wrapped) do
+    sorted[#sorted + 1] = v[1]
+  end
+  return sorted
+end
+
+--- Returns the JMESPath type of a Lua variable
+-- @param mixed value
+-- @return string
 function Functions.type(value)
   local t = type(value)
   if t == 'string' then return 'string' end
