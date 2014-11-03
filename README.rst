@@ -35,6 +35,13 @@ The ``runtime`` function accepts a hash of the following configuration options:
 cache
   Set to ``false`` to disable caching of parsing expressions into ASTs.
 
+  .. code-block:: lua
+
+      local jmespath = require 'jmespath'
+      local runtime = jmespath.runtime{cache = false}
+      -- The runtime is function that accepts expression, data
+      runtime('[2]', {1, 2, 3}) -- outputs 3
+
 fn_dispatcher
     A function that accepts a function name as the first argument and a
     sequence of arguments as the second argument. This can be useful for
@@ -61,10 +68,7 @@ fn_dispatcher
           return default_dispatcher(name, args)
         end
 
-        -- Create a runtime using the custom dispatcher.
         local runtime = jmespath.runtime{fn_dispatcher = dispatcher}
-
-        -- The runtime is function that accepts expression, data
         runtime('foo', {foo=10}) -- outputs 10
 
 Testing
