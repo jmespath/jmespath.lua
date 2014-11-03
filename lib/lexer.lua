@@ -7,7 +7,22 @@
 -- @alias Lexer
 
 local Lexer = {}
-local json = require 'jmespath.json'
+local json = require 'json'
+
+local json_decoder = json.decode.getDecoder({
+  others = {null = false},
+  object = {
+    setObjectKey = function (object, key, value)
+      local meta = getmetatable(object)
+      if not meta then
+        setmetatable(object, {__jsonorder = {key}})
+      else
+        meta.__jsonorder[#meta.__jsonorder + 1] = key
+      end
+      object[key] = value
+    end
+  }
+})
 
 --- Lexer constructor
 function Lexer.new()
@@ -244,7 +259,7 @@ function consume_literal(lexer)
   if tset.json_decode_char[first_char] or
     tset.json_numbers[first_char]
   then
-    token.value = json.decode(token.value)
+    token.value = json_decoder(token.value)
   elseif token.value == 'null' then
     token.value = nil
   elseif token.value == 'true' then
@@ -252,7 +267,7 @@ function consume_literal(lexer)
   elseif token.value == 'false' then
     token.value = false
   else
-    token.value = json.decode('"' .. token.value .. '"')
+    token.value = json_decoder('"' .. token.value .. '"')
   end
   return token
 end
@@ -261,7 +276,7 @@ end
 function consume_quoted_identifier(lexer)
   local token = parse_inside(lexer, '"')
   token.type = 'quoted_identifier'
-  token.value = json.decode('"' .. token.value.. '"')
+  token.value = json_decoder('"' .. token.value.. '"')
   return token
 end
 

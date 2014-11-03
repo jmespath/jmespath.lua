@@ -2,7 +2,7 @@ test: build
 	busted
 
 build:
-	@luarocks make > /dev/null
+	luarocks make rockspecs/jmespath-0.1-0.rockspec > /dev/null
 
 perf: build
 	@if [ -n "$$JIT" ]; then luajit perf.lua; else lua perf.lua; fi

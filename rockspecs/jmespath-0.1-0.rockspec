@@ -14,7 +14,8 @@ description = {
 
 dependencies = {
    "lua >= 5.1",
-   "lpeg >= 0.12"
+   "lpeg >= 0.12",
+   "luajson >= 1.3.3"
 }
 
 build = {
@@ -24,7 +25,6 @@ build = {
       ["jmespath.lexer"] = "lib/lexer.lua",
       ["jmespath.parser"] = "lib/parser.lua",
       ["jmespath.interpreter"] = "lib/interpreter.lua",
-      ["jmespath.functions"] = "lib/functions.lua",
-      ["jmespath.json"] = "lib/json.lua",
+      ["jmespath.functions"] = "lib/functions.lua"
    }
 }

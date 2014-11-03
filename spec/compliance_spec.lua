@@ -1,38 +1,20 @@
-local jmespath = require "jmespath"
-local lfs = require "lfs"
-local json = require "jmespath.json"
-
-local function jcmp(a, b)
-
-  local ta, tb = type(a), type(b)
-  if ta ~= tb then return false end
-  if ta ~= "table" then return a == b end
-  if #a ~= #b then return false end
-  local visited = {}
-
-  if #a > 0 then
-    for k1, v1 in ipairs(a) do
-      for k2, v2 in ipairs(b) do
-        if not visited[k2] and jcmp(v1, v2) then
-          visited[k2] = true
-          break
-        end
+local jmespath = require 'jmespath'
+local lfs = require 'lfs'
+local json = require 'json'
+local json_decoder = json.decode.getDecoder({
+  others = {null = false},
+  object = {
+    setObjectKey = function (object, key, value)
+      local meta = getmetatable(object)
+      if not meta then
+        setmetatable(object, {__jsonorder = {key}})
+      else
+        meta.__jsonorder[#meta.__jsonorder + 1] = key
       end
+      object[key] = value
     end
-    return #visited == #a
-  end
-
-  for k, _ in pairs(a) do
-    if not jcmp(a[k], b[k]) then return false end
-    visited[k] = true
-  end
-
-  for k, _ in pairs(b) do
-    if not visited[k] and not jcmp(a[k], b[k]) then return false end
-  end
-
-  return true
-end
+  }
+})
 
 describe('compliance', function()
 
@@ -40,7 +22,7 @@ describe('compliance', function()
   local function load_test(file)
     local f = assert(io.open(file, "r"))
     local t = assert(f:read("*a"), "Error loading file: " .. file)
-    local data = assert(json.decode(t), "Error decoding JSON: " .. file)
+    local data = assert(json_decoder(t), "Error decoding JSON: " .. file)
     f:close()
     return data
   end
@@ -60,9 +42,21 @@ describe('compliance', function()
             assert.is_true(jmespath.search(case.expression, suite.given) == nil)
           else
             local result = jmespath.search(case.expression, suite.given)
-            if not jcmp(case.result, result) then
-              assert.are.same(case.result, result)
+            local a = json.encode(result)
+            local b = json.encode(case.result)
+            -- Account for {} and [] being equivalent
+            if a ~= b then
+              a = a:gsub('{}', '[]')
+              b = b:gsub('{}', '[]')
             end
+            -- Account for nil being a weird concept in lua
+            if a ~= b then
+              a = a:gsub(',null', '')
+              a = a:gsub('null', '')
+              b = b:gsub(',null', '')
+              b = b:gsub('null', '')
+            end
+            assert.are.same(a, b)
           end
         end)
       end

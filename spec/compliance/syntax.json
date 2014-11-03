@@ -475,11 +475,6 @@
         "error": "syntax"
       },
       {
-        "comment": "Literal char escaped",
-        "expression": "foo[?bar==`[\"foo\\`bar\"]`]",
-        "result": null
-      },
-      {
         "comment": "Unknown comparator",
         "expression": "foo[?bar<>baz]",
         "error": "syntax"

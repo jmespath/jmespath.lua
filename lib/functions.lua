@@ -3,7 +3,7 @@
 -- @module jmespath.functions
 
 local Functions = {}
-local json = require 'jmespath.json'
+local json = require 'json'
 
 function fn_abs(args)
   validate('abs', args, {{'number'}})
