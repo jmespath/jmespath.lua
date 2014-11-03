@@ -1,29 +1,23 @@
-package = "jmespath"
-version = "0.1-0"
+package = 'jmespath'
+version = '0.1-0'
 
 source = {
-   url = "git://github.com/mtdowling/jmespath",
-   tag = "0.1.0",
+   url = 'git://github.com/mtdowling/jmespath',
+   tag = '0.1.0',
 }
 
 description = {
-   summary = "Declaratively specify how to extract elements from a JSON document, in Lua",
-   homepage = "https://github.com/mtdowling/jmespath.lua",
-   license = "MIT"
+   summary  = 'Declaratively specify how to extract elements from a JSON document, in Lua',
+   homepage = 'https://github.com/mtdowling/jmespath.lua',
+   license  = 'MIT'
 }
 
 dependencies = {
-   "lua >= 5.1",
-   "luajson >= 1.3.3"
+   'lua >= 5.1',
+   'luajson >= 1.3.3'
 }
 
 build = {
-   type = "builtin",
-   modules = {
-      ["jmespath"] = "lib/jmespath.lua",
-      ["jmespath.lexer"] = "lib/lexer.lua",
-      ["jmespath.parser"] = "lib/parser.lua",
-      ["jmespath.interpreter"] = "lib/interpreter.lua",
-      ["jmespath.functions"] = "lib/functions.lua"
-   }
+   type = 'builtin',
+   modules = {jmespath = 'jmespath.lua'}
 }
