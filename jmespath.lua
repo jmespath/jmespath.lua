@@ -1240,15 +1240,22 @@ return {
   --              - fn_dispatcher: Function dispatcher function to use with
   --                the interpreter. The dispatcher function accepts a
   --                function name followed by an array of arguments.
+  --              - cache: Set to false to disable caching previously parsed
+  --                ASTs.
   -- @return function Returns a JMESPath expression evaluator
   runtime = function(config)
-    if config and config.fn_dispatcher then
+    if not config then return default_runtime end
+    if config.fn_dispatcher then
       local interpreter = Interpreter.new{config}
+    end
+    if config.cache == false then
       return function (expression, data)
-        return interpreter:visit(parse(expression), data)
+        return interpreter:visit(parser:parse(expression), data)
       end
     end
-    return default_runtime
+    return function (expression, data)
+      return interpreter:visit(parse(expression), data)
+    end
   end,
 
   --- Creates an AST for the given JMESPath expression

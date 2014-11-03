@@ -32,6 +32,9 @@ expressions. Use the ``jmespath.runtime()`` function to create a new runtime.
 
 The ``runtime`` function accepts a hash of the following configuration options:
 
+cache
+  Set to ``false`` to disable caching of parsing expressions into ASTs.
+
 fn_dispatcher
     A function that accepts a function name as the first argument and a
     sequence of arguments as the second argument. This can be useful for
