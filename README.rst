@@ -11,9 +11,7 @@ A pure Lua implementation of `JMESPath <http://jmespath.readthedocs.org/en/lates
     local data = { foo = { baz = "bar" } }
     local result = jmespath.search(expression, data)
 
-**Installation**
-
-jmespath.lua can be installed using LuaRocks:
+jmespath.lua can be installed using `LuaRocks <http://luarocks.org/>`_:
 
 ::
 
