@@ -1241,7 +1241,7 @@ return {
   --                the interpreter. The dispatcher function accepts a
   --                function name followed by an array of arguments.
   -- @return function Returns a JMESPath expression evaluator
-  create_runtime = function(config)
+  runtime = function(config)
     if config and config.fn_dispatcher then
       local interpreter = Interpreter.new{config}
       return function (expression, data)
