@@ -10,3 +10,5 @@ perf: build
 test-setup:
 	luarocks install busted
 	luarocks install luafilesystem
+
+.PHONY: build

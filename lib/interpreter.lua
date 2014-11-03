@@ -33,7 +33,7 @@ local visitors = {
 
   --- Returns a specific field of the current node
   field = function(interpreter, node, data)
-    if type(data) == 'table' then return data[node.key] end
+    if type(data) == 'table' then return data[node.value] end
   end,
 
   --- Passes the result of the left expression to the right expression
@@ -47,8 +47,8 @@ local visitors = {
   --- Returns a specific index of the current node
   index = function(interpreter, node, data)
     if type(data) ~= 'table' then return nil end
-    if node.index < 0 then return data[#data + node.index + 1] end
-    return data[node.index + 1]
+    if node.value < 0 then return data[#data + node.value + 1] end
+    return data[node.value + 1]
   end,
 
   --- Interprets an object projection node
@@ -143,13 +143,10 @@ local visitors = {
   ["or"] = function(interpreter, node, data)
     local result = interpreter:visit(node.children[1], data)
     local t = type(result)
-
-    if not result or result == ''
-      or (t == 'table' and next(result) == nil)
+    if not result or result == '' or (t == 'table' and next(result) == nil)
     then
       result = interpreter:visit(node.children[2], data)
     end
-
     return result
   end,
 
@@ -168,12 +165,10 @@ local visitors = {
     if data == nil then return nil end
     local collected = {}
     local n = 0
-
     for _, v in pairs(node.children) do
       n = n + 1
       collected[n] = interpreter:visit(v, data)
     end
-
     return collected
   end,
 
@@ -181,12 +176,10 @@ local visitors = {
   multi_select_hash = function(interpreter, node, data)
     if data == nil then return nil end
     local collected, order = interpreter.hashfn(), {}
-
     for _, v in ipairs(node.children) do
-      collected[v.key] = interpreter:visit(v.children[1], data)
-      order[#order + 1] = collected[v.key]
+      collected[v.value] = interpreter:visit(v.children[1], data)
+      order[#order + 1] = collected[v.value]
     end
-
     return setmetatable(collected, {__jsonorder = order})
   end,
 

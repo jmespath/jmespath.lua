@@ -97,7 +97,6 @@ function Lexer:tokenize(expression)
   self.token_iter = expression:gmatch('.')
   self.pos = 0
   consume(self)
-
   while self.c do
     if tset.identifier_start[self.c] then
       tokens[#tokens + 1] = consume_identifier(self)
@@ -126,10 +125,7 @@ function Lexer:tokenize(expression)
       error('Unexpected character ' .. self.c .. ' found at #' .. self.pos)
     end
   end
-
-  -- Always end with an EOF token
   tokens[#tokens + 1] = {type = 'eof', pos = self.pos, value = ''}
-
   return tokens
 end
 
@@ -144,12 +140,10 @@ function consume_identifier(lexer)
   local buffer = {lexer.c}
   local start = lexer.pos
   consume(lexer)
-
   while tset.identifiers[lexer.c] do
     buffer[#buffer + 1] = lexer.c
     consume(lexer)
   end
-
   return {pos = start, type = 'identifier', value = table.concat(buffer)}
 end
 
@@ -158,12 +152,10 @@ function consume_number(lexer)
   local buffer = {lexer.c}
   local start = lexer.pos
   consume(lexer)
-
   while tset.numbers[lexer.c] do
     buffer[#buffer + 1] = lexer.c
     consume(lexer)
   end
-
   return {
     pos   = start,
     type  = 'number',
@@ -174,7 +166,6 @@ end
 --- Consumes a flatten token, lbracket, and filter token: '[]', '[?', and '['
 function consume_lbracket(lexer)
   consume(lexer)
-
   if lexer.c == ']' then
     consume(lexer)
     return {pos = lexer.pos - 1, type = 'flatten', value = '[]'}
@@ -193,33 +184,26 @@ function consume_operator(lexer)
     pos   = lexer.pos,
     value = lexer.c
   }
-
   consume(lexer)
-
   if lexer.c == '=' then
     consume(lexer)
     token.value = token.value .. '='
   elseif token.value == '=' then
     error('Expected ==, got =')
   end
-
   if not tset.operators[token.value] then
     error('Invalid operator: ' .. token.value)
   end
-
   return token
 end
 
 --- Consumes an or, '||', and pipe, '|' token
 function consume_pipe(lexer)
   consume(lexer)
-
   if lexer.c ~= '|' then
     return {type = 'pipe', value = '|', pos = lexer.pos - 1};
   end
-
   consume(lexer)
-
   return {type = 'or', value = '||', pos = lexer.pos - 2};
 end
 
@@ -231,15 +215,12 @@ end
 local function parse_inside(lexer, wrapper, skip_ws)
   local p = lexer.pos
   local buffer = {}
-
   -- Consume the leading character
   consume(lexer)
-
   -- Removing leading whitespace
   if skip_ws then
     while lexer.c == ' ' do consume(lexer) end
   end
-
   while lexer.c and lexer.c ~= wrapper do
     if lexer.c == "\\" then
       consume(lexer)
@@ -248,14 +229,11 @@ local function parse_inside(lexer, wrapper, skip_ws)
     buffer[#buffer + 1] = lexer.c
     consume(lexer)
   end
-
   if lexer.c ~= wrapper then
     error('Expected `' .. wrapper .. "` but found "
           .. tostring(lexer.c) .. ' at character #' .. lexer.pos)
   end
-
   consume(lexer)
-
   return {value = table.concat(buffer), pos = p}
 end
 
@@ -264,7 +242,6 @@ function consume_literal(lexer)
   local token = parse_inside(lexer, '`', true)
   local first_char = token.value:sub(1, 1)
   token.type = 'literal'
-
   if tset.json_decode_char[first_char] or
     tset.json_numbers[first_char]
   then
@@ -278,7 +255,6 @@ function consume_literal(lexer)
   else
     token.value = json.decode('"' .. token.value .. '"')
   end
-
   return token
 end
 
