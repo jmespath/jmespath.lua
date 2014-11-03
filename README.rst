@@ -43,7 +43,11 @@ fn_dispatcher
     .. code-block:: lua
 
         local jmespath = require 'jmespath'
+
+        -- Create a default dispatcher function.
         local default_dispatcher = jmespath.Functions.new()
+
+        -- Create a new dispatcher function that wraps the default dispatcher.
         local dispatcher = function (name, args)
           if name == 'add' then
             jmespath.Functions.reduce(args, function (carry, item, index)
@@ -53,7 +57,11 @@ fn_dispatcher
           end
           return default_dispatcher(name, args)
         end
+
+        -- Create a runtime using the custom dispatcher.
         local runtime = jmespath.runtime{fn_dispatcher = dispatcher}
+
+        -- The runtime is function that accepts expression, data
         runtime('foo', {foo=10}) -- outputs 10
 
 Testing
