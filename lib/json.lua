@@ -48,10 +48,11 @@ SOFTWARE.
 -- global dependencies:
 local pairs, tostring, tonumber, setmetatable, select =
       pairs, tostring, tonumber, setmetatable, select
-local floor = math.floor
+local floor, huge = math.floor, math.huge
 local gsub, strsub, strchar, strfind, strlen, strmatch =
       string.gsub, string.sub, string.char,
       string.find, string.len, string.match
+local concat = table.concat
 
 local json = { version = "dkjson 2.4" }
 json.null = setmetatable({}, {__tojson = function () return "null" end})
@@ -84,6 +85,231 @@ local function str2num (str)
   end
   return num
 end
+
+-- JSON encoding
+
+local function fsub (str, pattern, repl)
+  -- gsub always builds a new string in a buffer, even when no match
+  -- exists. First using find should be more efficient when most strings
+  -- don't contain the pattern.
+  if strfind (str, pattern) then
+    return gsub (str, pattern, repl)
+  else
+    return str
+  end
+end
+
+local function num2str (num)
+  return replace(fsub(tostring(num), numfilter, ""), decpoint, ".")
+end
+
+local function isarray (tbl)
+  local max, n, arraylen = 0, 0, 0
+  for k,v in pairs (tbl) do
+    if k == 'n' and type(v) == 'number' then
+      arraylen = v
+      if v > max then
+        max = v
+      end
+    else
+      if type(k) ~= 'number' or k < 1 or floor(k) ~= k then
+        return false
+      end
+      if k > max then
+        max = k
+      end
+      n = n + 1
+    end
+  end
+  if max > 10 and max > arraylen and max > n * 2 then
+    return false -- don't create an array with too many holes
+  end
+  return true, max
+end
+
+local function addnewline2 (level, buffer, buflen)
+  buffer[buflen+1] = "\n"
+  buffer[buflen+2] = strrep ("  ", level)
+  buflen = buflen + 2
+  return buflen
+end
+
+function json.addnewline (state)
+  if state.indent then
+    state.bufferlen = addnewline2 (state.level or 0,
+                           state.buffer, state.bufferlen or #(state.buffer))
+  end
+end
+
+local encode2 -- forward declaration
+
+local function addpair (key, value, prev, indent, level, buffer, buflen, tables, globalorder, state)
+  local kt = type (key)
+  if kt ~= 'string' and kt ~= 'number' then
+    return nil, "type '" .. kt .. "' is not supported as a key by JSON."
+  end
+  if prev then
+    buflen = buflen + 1
+    buffer[buflen] = ","
+  end
+  if indent then
+    buflen = addnewline2 (level, buffer, buflen)
+  end
+  buffer[buflen+1] = quotestring (key)
+  buffer[buflen+2] = ":"
+  return encode2 (value, indent, level, buffer, buflen + 2, tables, globalorder, state)
+end
+
+local function appendcustom(res, buffer, state)
+  local buflen = state.bufferlen
+  if type (res) == 'string' then
+    buflen = buflen + 1
+    buffer[buflen] = res
+  end
+  return buflen
+end
+
+local function exception(reason, value, state, buffer, buflen, defaultmessage)
+  defaultmessage = defaultmessage or reason
+  local handler = state.exception
+  if not handler then
+    return nil, defaultmessage
+  else
+    state.bufferlen = buflen
+    local ret, msg = handler (reason, value, state, defaultmessage)
+    if not ret then return nil, msg or defaultmessage end
+    return appendcustom(ret, buffer, state)
+  end
+end
+
+function json.encodeexception(reason, value, state, defaultmessage)
+  return quotestring("<" .. defaultmessage .. ">")
+end
+
+encode2 = function (value, indent, level, buffer, buflen, tables, globalorder, state)
+  local valtype = type (value)
+  local valmeta = getmetatable (value)
+  valmeta = type (valmeta) == 'table' and valmeta -- only tables
+  local valtojson = valmeta and valmeta.__tojson
+  if valtojson then
+    if tables[value] then
+      return exception('reference cycle', value, state, buffer, buflen)
+    end
+    tables[value] = true
+    state.bufferlen = buflen
+    local ret, msg = valtojson (value, state)
+    if not ret then return exception('custom encoder failed', value, state, buffer, buflen, msg) end
+    tables[value] = nil
+    buflen = appendcustom(ret, buffer, state)
+  elseif value == nil then
+    buflen = buflen + 1
+    buffer[buflen] = "null"
+  elseif valtype == 'number' then
+    local s
+    if value ~= value or value >= huge or -value >= huge then
+      -- This is the behaviour of the original JSON implementation.
+      s = "null"
+    else
+      s = num2str (value)
+    end
+    buflen = buflen + 1
+    buffer[buflen] = s
+  elseif valtype == 'boolean' then
+    buflen = buflen + 1
+    buffer[buflen] = value and "true" or "false"
+  elseif valtype == 'string' then
+    buflen = buflen + 1
+    buffer[buflen] = quotestring (value)
+  elseif valtype == 'table' then
+    if tables[value] then
+      return exception('reference cycle', value, state, buffer, buflen)
+    end
+    tables[value] = true
+    level = level + 1
+    local isa, n = isarray (value)
+    if n == 0 and valmeta and valmeta.__jsontype == 'object' then
+      isa = false
+    end
+    local msg
+    if isa then -- JSON array
+      buflen = buflen + 1
+      buffer[buflen] = "["
+      for i = 1, n do
+        buflen, msg = encode2 (value[i], indent, level, buffer, buflen, tables, globalorder, state)
+        if not buflen then return nil, msg end
+        if i < n then
+          buflen = buflen + 1
+          buffer[buflen] = ","
+        end
+      end
+      buflen = buflen + 1
+      buffer[buflen] = "]"
+    else -- JSON object
+      local prev = false
+      buflen = buflen + 1
+      buffer[buflen] = "{"
+      local order = valmeta and valmeta.__jsonorder or globalorder
+      if order then
+        local used = {}
+        n = #order
+        for i = 1, n do
+          local k = order[i]
+          local v = value[k]
+          if v then
+            used[k] = true
+            buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
+            prev = true -- add a seperator before the next element
+          end
+        end
+        for k,v in pairs (value) do
+          if not used[k] then
+            buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
+            if not buflen then return nil, msg end
+            prev = true -- add a seperator before the next element
+          end
+        end
+      else -- unordered
+        for k,v in pairs (value) do
+          buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
+          if not buflen then return nil, msg end
+          prev = true -- add a seperator before the next element
+        end
+      end
+      if indent then
+        buflen = addnewline2 (level - 1, buffer, buflen)
+      end
+      buflen = buflen + 1
+      buffer[buflen] = "}"
+    end
+    tables[value] = nil
+  else
+    return exception ('unsupported type', value, state, buffer, buflen,
+      "type '" .. valtype .. "' is not supported by JSON.")
+  end
+  return buflen
+end
+
+function json.encode (value, state)
+  state = state or {}
+  local oldbuffer = state.buffer
+  local buffer = oldbuffer or {}
+  state.buffer = buffer
+  updatedecpoint()
+  local ret, msg = encode2 (value, state.indent, state.level or 0,
+                   buffer, state.bufferlen or 0, state.tables or {}, state.keyorder, state)
+  if not ret then
+    error (msg, 2)
+  elseif oldbuffer == buffer then
+    state.bufferlen = ret
+    return true
+  else
+    state.bufferlen = nil
+    state.buffer = nil
+    return concat (buffer)
+  end
+end
+
+--- JSON parsing
 
 local function loc (str, where)
   local line, pos, linepos = 1, 1, 0

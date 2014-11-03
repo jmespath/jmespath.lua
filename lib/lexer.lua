@@ -11,8 +11,7 @@ local json = require 'jmespath.json'
 
 --- Lexer constructor
 function Lexer.new()
-  local self = setmetatable({}, {__index = Lexer})
-  return self
+  return setmetatable({}, {__index = Lexer})
 end
 
 -- Provides a set of tokens used by the lexer

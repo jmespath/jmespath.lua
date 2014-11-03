@@ -16,14 +16,20 @@
 
 -- Interpreter prototype
 local Interpreter = {}
+local Functions = require('jmespath.functions')
 
 --- Interpreter constructor
 function Interpreter.new(config)
   local self = setmetatable({}, {__index = Interpreter})
-  if config and config.hashfn then
-    self.hashfn = config.hashfn
-  else
+  if config then
+    if config.hashfn then self.hashfn = config.hashfn end
+    if config.fn_dispatcher then self.fn_dispatcher = config.fn_dispatcher end
+  end
+  if not self.hashfn then
     self.hashfn = function() return {} end
+  end
+  if not self.fn_dispatcher then
+    self.fn_dispatcher = Functions.new()
   end
   return self
 end
@@ -185,6 +191,7 @@ local visitors = {
 
   --- Evaluates a comparison
   comparator = function(interpreter, node, data)
+    -- @TODO
   end,
 
   --- Returns a value if a condition evaluates to true or nil
@@ -196,6 +203,11 @@ local visitors = {
 
   --- Returns the result of a function call
   ["function"] = function(interpreter, node, data)
+    local args = {}
+    for _, i in pairs(node.children) do
+      args[#args + 1] = interpreter:visit(i, data)
+    end
+    return interpreter.fn_dispatcher(node.value, args)
   end,
 
   --- Returns an expression node

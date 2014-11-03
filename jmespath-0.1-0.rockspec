@@ -24,6 +24,7 @@ build = {
       ["jmespath.lexer"] = "lib/lexer.lua",
       ["jmespath.parser"] = "lib/parser.lua",
       ["jmespath.interpreter"] = "lib/interpreter.lua",
+      ["jmespath.functions"] = "lib/functions.lua",
       ["jmespath.json"] = "lib/json.lua",
    }
 }
