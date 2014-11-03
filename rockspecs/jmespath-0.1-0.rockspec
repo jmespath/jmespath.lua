@@ -14,7 +14,6 @@ description = {
 
 dependencies = {
    "lua >= 5.1",
-   "lpeg >= 0.12",
    "luajson >= 1.3.3"
 }
 
