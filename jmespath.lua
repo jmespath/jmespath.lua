@@ -346,7 +346,7 @@ local Parser = (function()
     dot               = 40,
     lbrace            = 50,
     filter            = 50,
-    lbracket          = 50,
+    lbracket          = 55,
     lparen            = 60
   }
 
@@ -994,6 +994,31 @@ local Functions = (function()
     end
   end
 
+  --- Checks if two values are equal. When passed tables, does a deep comparsion
+  -- @link https://github.com/mirven/underscore.lua/blob/master/lib/underscore.lua
+  function Functions.is_equal(o1, o2, ignore_mt)
+    local ty1, ty2 = type(o1), type(o2)
+    if ty1 ~= ty2 then return false end
+
+    -- non-table types can be directly compared
+    if ty1 ~= 'table' then return o1 == o2 end
+
+    -- as well as tables which have the metamethod __eq
+    local mt = getmetatable(o1)
+    if not ignore_mt and mt and mt.__eq then return o1 == o2 end
+
+    local is_equal = Functions.is_equal
+    for k1,v1 in pairs(o1) do
+      local v2 = o2[k1]
+      if v2 == nil or not is_equal(v1,v2, ignore_mt) then return false end
+    end
+    for k2,v2 in pairs(o2) do
+      local v1 = o1[k2]
+      if v1 == nil then return false end
+    end
+    return true
+  end
+
   function Functions.new(config)
     local fns = {
       abs = fn_abs,
@@ -1183,7 +1208,25 @@ local Interpreter = (function()
     end,
 
     comparator = function(interpreter, node, data)
-      -- @TODO
+      local left = interpreter:visit(node.children[1], data)
+      local right = interpreter:visit(node.children[2], data)
+      if node['value'] == '==' then
+        return Functions.is_equal(left, right)
+      elseif node['value'] == '!=' then
+        return not Functions.is_equal(left, right)
+      end
+      if type(left) ~= 'number' or type(right) ~= 'number' then
+        return nil
+      end
+      if node['value'] == '>' then
+        return left > right
+      elseif node['value'] == '>=' then
+        return left >= right
+      elseif node['value'] == '<' then
+        return left < right
+      else
+        return left <= right
+      end
     end,
 
     condition = function(interpreter, node, data)
