@@ -692,12 +692,14 @@ local Functions = (function()
   end
 
   function fn_join(args)
-    validate('join', args, {{'array'}, {'string'}})
+    validate('join', args, {{'string'}, {'array'}})
     local fn = function (carry, item, index)
       if index == 1 then return item end
-      return carry .. args[2] .. item
+      return carry .. args[1] .. item
     end
-    return typed_reduce('join:0', args[1], {'string'}, fn)
+    local result = typed_reduce('join:1', args[2], {'string'}, fn)
+    if result == nil then return '' end
+    return result
   end
 
   function fn_keys(args)
@@ -708,12 +710,16 @@ local Functions = (function()
   end
 
   function fn_length(args)
-    validate('length', args, {{'array', 'string'}})
-    return #args[1]
+    validate('length', args, {{'array', 'string', 'object'}})
+    local total = #args[1]
+    if total > 0 then return total end
+    if type(args[1]) == 'table' then
+      for _, _ in pairs(args[1]) do total = total + 1 end
+    end
+    return total
   end
 
   function fn_not_null(args)
-    validate_arity('not_null:0', #args, 1)
     for _, i in pairs(args) do
       if i ~= nil then return i end
     end
@@ -741,7 +747,7 @@ local Functions = (function()
 
   function fn_min(args)
     validate('min', args, {{'array'}})
-    local fn = function (carry, item)
+    local fn = function (carry, item, index)
       if index > 1 and carry <= item then return carry end
       return item
     end
@@ -749,7 +755,7 @@ local Functions = (function()
   end
 
   function fn_min_by(args)
-    validate('min_by', args, {{'array'}})
+    validate('min_by', args, {{'array'}, {'expression'}})
     local expr = wrap_expr('min_by:1', args[2], {'number', 'string'})
     local fn = function (carry, item, index)
       if index == 1 then return item end
@@ -794,7 +800,9 @@ local Functions = (function()
       if index > 1 then return carry + item end
       return item
     end
-    return typed_reduce('sum:0', args[1], {'number'}, fn)
+    local result = typed_reduce('sum:0', args[1], {'number'}, fn)
+    if result == nil then return 0 end
+    return result
   end
 
   function fn_starts_with(args)
@@ -803,12 +811,14 @@ local Functions = (function()
   end
 
   function fn_type(args)
-    validate_arity('type:0', #args, 1)
+    -- Cannot get the length of a table with a single argument :$
+    if #args > 0 then validate_arity('type', #args, 1) end
     return Functions.type(args[1])
   end
 
   function fn_to_number(args)
-    validate_arity('to_number:0', #args, 1)
+    -- Cannot get the length of a table with a single argument :$
+    if #args > 0 then validate_arity('to_number', #args, 1) end
     return tonumber(args[1])
   end
 
@@ -825,7 +835,7 @@ local Functions = (function()
   end
 
   function fn_values(args)
-    validate('values', args, {{'array'}})
+    validate('values', args, {{'object'}})
     local values = {}
     for _, i in pairs(args[1]) do
       values[#values + 1] = i
@@ -857,10 +867,10 @@ local Functions = (function()
   end
 
   function validate_type(from, value, types)
-    if types[1] == 'any'
-      or Functions.in_table(Functions.type(value), types)
-      or (value == {} and Functions.in_table('array', types))
-    then
+    if types[1] == 'any' then return end
+    if Functions.in_table(Functions.type(value), types) then return end
+    -- Account for empty tables and arrays being equivalent
+    if Functions.in_table('array', types) and Functions.is_equal(value, {}) then
       return
     end
     local msg = 'must be one of the following types: '
@@ -1243,13 +1253,18 @@ local Interpreter = (function()
       return interpreter.fn_dispatcher(node.value, args)
     end,
 
-    expression = function(interpreter, node, data)
-      return {node = node, interpreter = interpreter}
+    expref = function(interpreter, node, data)
+      return function (value)
+        return interpreter:visit(node.children[1], value)
+      end
     end
   }
 
   function Interpreter:visit(node, data)
-    return visitors[node.type](self, node, data)
+    if visitors[node.type] then
+      return visitors[node.type](self, node, data)
+    end
+    error('Invalid node: ' .. node.type)
   end
 
   return Interpreter

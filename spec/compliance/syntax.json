@@ -605,18 +605,18 @@
     "comment": "Combined syntax",
     "given": [],
     "cases": [
-      {
-        "expression": "*||*|*|*",
-        "result": []
-      },
-      {
-        "expression": "*[]||[*]",
-        "result": []
-      },
-      {
-        "expression": "[*.*]",
-        "result": [[]]
-      }
+        {
+          "expression": "*||*|*|*",
+          "result": null
+        },
+        {
+          "expression": "*[]||[*]",
+          "result": []
+        },
+        {
+          "expression": "[*.*]",
+          "result": [null]
+        }
     ]
   }
 ]
