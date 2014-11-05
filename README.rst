@@ -69,7 +69,7 @@ fn_dispatcher
         end
 
         local runtime = jmespath.runtime{fn_dispatcher = dispatcher}
-        runtime('foo', {foo=10}) -- outputs 10
+        runtime('add(foo, `10`, `1`)', {foo=10}) -- outputs 21
 
 Testing
 -------
