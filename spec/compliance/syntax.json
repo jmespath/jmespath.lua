@@ -95,6 +95,14 @@
       {
         "expression": "a][",
         "error": "syntax"
+      },
+      {
+        "expression": "@",
+        "error": "syntax"
+      },
+      {
+        "expression": "@.foo",
+        "error": "syntax"
       }
     ]
   },
@@ -473,6 +481,11 @@
         "comment": "Literal char not escaped",
         "expression": "foo[?bar==`[\"foo`bar\"]`]",
         "error": "syntax"
+      },
+      {
+        "comment": "Literal char escaped",
+        "expression": "foo[?bar==`[\"foo\\`bar\"]`]",
+        "result": null
       },
       {
         "comment": "Unknown comparator",

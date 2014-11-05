@@ -1106,9 +1106,7 @@ local Interpreter = (function()
 
     object_projection = function(interpreter, node, data)
       local left = interpreter:visit(node.children[1], data)
-      -- The left result must be a hash or sequence.
       if type(left) ~= 'table' then return nil end
-      -- Empty tables should just return the table.
       if next(left) == nil then return left end
       -- Don't perform an object projection on an array
       if #left > 0 then return nil end
@@ -1122,9 +1120,8 @@ local Interpreter = (function()
         order = {}
         for k, _ in pairs(left) do order[#order + 1] = k end
       end
-      for _, v in ipairs(order) do
-        local value = left[v]
-        local result = interpreter:visit(node.children[2], value)
+      for _, v in pairs(order) do
+        local result = interpreter:visit(node.children[2], left[v])
         if result ~= nil then collected[#collected + 1] = result end
       end
       return collected
@@ -1210,9 +1207,9 @@ local Interpreter = (function()
     multi_select_hash = function(interpreter, node, data)
       if data == nil then return nil end
       local collected, order = {}, {}
-      for _, v in ipairs(node.children) do
+      for _, v in pairs(node.children) do
         collected[v.value] = interpreter:visit(v.children[1], data)
-        order[#order + 1] = collected[v.value]
+        order[#order + 1] = v.value
       end
       return setmetatable(collected, {__jsonorder = order})
     end,

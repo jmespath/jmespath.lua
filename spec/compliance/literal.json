@@ -83,9 +83,23 @@
                 "result": 9
             },
             {
+                "comment": "Escaping a backtick",
+                "expression": "`foo\\`bar`",
+                "result": "foo`bar"
+            },
+            {
+                "comment": "Escaping a backtick in quotes",
+                "expression": "`\"foo\\`bar\"`",
+                "result": "foo`bar"
+            },
+            {
                 "comment": "Double quote in literal",
                 "expression": "`foo\\\"bar`",
                 "result": "foo\"bar"
+            },
+            {
+                "expression": "`1\\``",
+                "result": "1`"
             },
             {
                 "comment": "Multiple literal expressions with escapes",
