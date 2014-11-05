@@ -100,54 +100,14 @@ local Lexer = (function()
     return t
   end)()
 
-  --- Creates a sequence table of tokens for use in a token stream.
-  -- @tparam  string      Expression Expression to tokenize
-  -- @treturn table Returns a sequence table of tokens
-  function Lexer:tokenize(expression)
-    local tokens = {}
-    self.token_iter = expression:gmatch('.')
-    self.pos = 0
-    consume(self)
-    while self.c do
-      if tset.identifier_start[self.c] then
-        tokens[#tokens + 1] = consume_identifier(self)
-      elseif tset.simple[self.c] then
-        if tset.simple[self.c] ~= 'ws' then
-          tokens[#tokens + 1] = {
-            pos   = self.pos,
-            type  = tset.simple[self.c],
-            value = self.c
-          }
-        end
-        consume(self)
-      elseif tset.numbers[self.c] or self.c == '-' then
-        tokens[#tokens + 1] = consume_number(self)
-      elseif self.c == '[' then
-        tokens[#tokens + 1] = consume_lbracket(self)
-      elseif tset.operator_start[self.c] then
-        tokens[#tokens + 1] = consume_operator(self)
-      elseif self.c == '|' then
-        tokens[#tokens + 1] = consume_pipe(self)
-      elseif self.c == '"' then
-        tokens[#tokens + 1] = consume_quoted_identifier(self)
-      elseif self.c == '`' then
-        tokens[#tokens + 1] = consume_literal(self)
-      else
-        error('Unexpected character ' .. self.c .. ' found at #' .. self.pos)
-      end
-    end
-    tokens[#tokens + 1] = {type = 'eof', pos = self.pos, value = ''}
-    return tokens
-  end
-
   --- Advances to the next token and modifies the internal state of the lexer.
-  function consume(lexer)
+  local function consume(lexer)
     lexer.c = lexer.token_iter()
     if lexer.c ~= '' then lexer.pos = lexer.pos + 1 end
   end
 
   --- Consumes an identifier token /[A-Za-z0-9_\-]/
-  function consume_identifier(lexer)
+  local function consume_identifier(lexer)
     local buffer = {lexer.c}
     local start = lexer.pos
     consume(lexer)
@@ -159,7 +119,7 @@ local Lexer = (function()
   end
 
   --- Consumes a number token /[0-9\-]/
-  function consume_number(lexer)
+  local function consume_number(lexer)
     local buffer = {lexer.c}
     local start = lexer.pos
     consume(lexer)
@@ -175,7 +135,7 @@ local Lexer = (function()
   end
 
   --- Consumes a flatten token, lbracket, and filter token: '[]', '[?', and '['
-  function consume_lbracket(lexer)
+  local function consume_lbracket(lexer)
     consume(lexer)
     if lexer.c == ']' then
       consume(lexer)
@@ -189,7 +149,7 @@ local Lexer = (function()
   end
 
   --- Consumes an operation <, >, !, !=, ==
-  function consume_operator(lexer)
+  local function consume_operator(lexer)
     local token = {
       type  = 'comparator',
       pos   = lexer.pos,
@@ -209,7 +169,7 @@ local Lexer = (function()
   end
 
   --- Consumes an or, '||', and pipe, '|' token
-  function consume_pipe(lexer)
+  local function consume_pipe(lexer)
     consume(lexer)
     if lexer.c ~= '|' then
       return {type = 'pipe', value = '|', pos = lexer.pos - 1};
@@ -249,7 +209,7 @@ local Lexer = (function()
   end
 
   --- Consumes a literal token.
-  function consume_literal(lexer)
+  local function consume_literal(lexer)
     local token = parse_inside(lexer, '`', true)
     local first_char = token.value:sub(1, 1)
     token.type = 'literal'
@@ -270,11 +230,51 @@ local Lexer = (function()
   end
 
   --- Consumes a quoted string.
-  function consume_quoted_identifier(lexer)
+  local function consume_quoted_identifier(lexer)
     local token = parse_inside(lexer, '"')
     token.type = 'quoted_identifier'
     token.value = json_decoder('"' .. token.value.. '"')
     return token
+  end
+
+  --- Creates a sequence table of tokens for use in a token stream.
+  -- @tparam  string      Expression Expression to tokenize
+  -- @treturn table Returns a sequence table of tokens
+  function Lexer:tokenize(expression)
+    local tokens = {}
+    self.token_iter = expression:gmatch('.')
+    self.pos = 0
+    consume(self)
+    while self.c do
+      if tset.identifier_start[self.c] then
+        tokens[#tokens + 1] = consume_identifier(self)
+      elseif tset.simple[self.c] then
+        if tset.simple[self.c] ~= 'ws' then
+          tokens[#tokens + 1] = {
+            pos   = self.pos,
+            type  = tset.simple[self.c],
+            value = self.c
+          }
+        end
+        consume(self)
+      elseif tset.numbers[self.c] or self.c == '-' then
+        tokens[#tokens + 1] = consume_number(self)
+      elseif self.c == '[' then
+        tokens[#tokens + 1] = consume_lbracket(self)
+      elseif tset.operator_start[self.c] then
+        tokens[#tokens + 1] = consume_operator(self)
+      elseif self.c == '|' then
+        tokens[#tokens + 1] = consume_pipe(self)
+      elseif self.c == '"' then
+        tokens[#tokens + 1] = consume_quoted_identifier(self)
+      elseif self.c == '`' then
+        tokens[#tokens + 1] = consume_literal(self)
+      else
+        error('Unexpected character ' .. self.c .. ' found at #' .. self.pos)
+      end
+    end
+    tokens[#tokens + 1] = {type = 'eof', pos = self.pos, value = ''}
+    return tokens
   end
 
   return Lexer
@@ -404,7 +404,7 @@ local Parser = (function()
     return {type = 'expref', children = {expr(parser, 2)}}
   end
 
-  function parse_kvp(parser)
+  local function parse_kvp(parser)
     local valid_colon = {colon = true}
     local key = parser.token.value
     parser:advance(valid_colon)
@@ -656,217 +656,21 @@ end)()
 local Functions = (function()
   local Functions = {}
 
-  function fn_abs(args)
-    validate('abs', args, {{'number'}})
-    return math.abs(args[1])
-  end
-
-  function fn_avg(args)
-    validate('avg', args, {{'array'}})
-    if not #args[1] then return nil end
-    return fn_sum(args) / #args[1]
-  end
-
-  function fn_ceil(args)
-    validate('ceil', args, {{'number'}})
-    return math.ceil(args[1])
-  end
-
-  function fn_contains(args)
-    validate('contains', args, {{'string', 'array'}, {'any'}})
-    if type(args[1]) == 'table' then
-      return Functions.in_table(args[2], args[1])
-    end
-    return string.find(args[1], args[2]) ~= nil
-  end
-
-  function fn_ends_with(args)
-    validate('ends_with', args, {{'string'}})
-    return args[2] == ''
-      or string.sub(args[1], -string.len(args[2])) == args[2]
-  end
-
-  function fn_floor(args)
-    validate('floor', args, {{'number'}})
-    return math.floor(args[1])
-  end
-
-  function fn_join(args)
-    validate('join', args, {{'string'}, {'array'}})
-    local fn = function (carry, item, index)
-      if index == 1 then return item end
-      return carry .. args[1] .. item
-    end
-    local result = typed_reduce('join:1', args[2], {'string'}, fn)
-    if result == nil then return '' end
-    return result
-  end
-
-  function fn_keys(args)
-    validate('keys', args, {{'object'}})
-    local keys = {}
-    for k, _ in pairs(args[1]) do keys[#keys + 1] = k end
-    return keys
-  end
-
-  function fn_length(args)
-    validate('length', args, {{'array', 'string', 'object'}})
-    local total = #args[1]
-    if total > 0 then return total end
-    if type(args[1]) == 'table' then
-      for _, _ in pairs(args[1]) do total = total + 1 end
-    end
-    return total
-  end
-
-  function fn_not_null(args)
-    for _, i in pairs(args) do
-      if i ~= nil then return i end
-    end
-  end
-
-  function fn_max(args)
-    validate('max', args, {{'array'}})
-    local fn = function (carry, item, index)
-      if index > 1 and carry >= item then return carry end
-      return item
-    end
-    return typed_reduce('max:0', args[1], {'number', 'string'}, fn)
-  end
-
-  function fn_max_by(args)
-    validate('max_by', args, {{'array'}, {'expression'}})
-    local expr = wrap_expr('max_by:1', args[2], {'number', 'string'})
-    local fn = function (carry, item, index)
-      if index == 1 then return item end
-      if expr(carry) >= expr(item) then return carry end
-      return item
-    end
-    return typed_reduce('max_by:1', args[1], {'any'}, fn)
-  end
-
-  function fn_min(args)
-    validate('min', args, {{'array'}})
-    local fn = function (carry, item, index)
-      if index > 1 and carry <= item then return carry end
-      return item
-    end
-    return typed_reduce('min:0', args[1], {'number', 'string'}, fn)
-  end
-
-  function fn_min_by(args)
-    validate('min_by', args, {{'array'}, {'expression'}})
-    local expr = wrap_expr('min_by:1', args[2], {'number', 'string'})
-    local fn = function (carry, item, index)
-      if index == 1 then return item end
-      if expr(carry) <= expr(item) then return carry end
-      return item
-    end
-    return typed_reduce('min_by:1', args[1], {'any'}, fn)
-  end
-
-  function fn_reverse(args)
-    validate('reverse', args, {{'array', 'string'}})
-    if type(args[1]) == 'string' then
-      return string.reverse(args[1])
-    end
-    local reversed, items = {}, #args[1]
-    for k, v in ipairs(args[1]) do reversed[items + 1 - k] = v end
-    return reversed
-  end
-
-  function fn_sort(args)
-    validate('sort', args, {{'array'}})
-    local valid = {'string', 'number'}
-    return Functions.stable_sort(args[1], function (a, b)
-      validate_seq('sort:0', valid, a, b)
-      return sortfn(a, b)
-    end)
-  end
-
-  function fn_sort_by(args)
-    validate('sort_by', args, {{'array'}, {'expression'}})
-    local expr, valid = args[2], {'string', 'number'}
-    return Functions.stable_sort(args[1], function (a, b)
-      local va, vb = expr(a), expr(b)
-      validate_seq('sort_by:0', valid, va, vb)
-      return sortfn(va, vb)
-    end)
-  end
-
-  function fn_sum(args)
-    validate('sum', args, {{'array'}})
-    local fn = function (carry, item, index)
-      if index > 1 then return carry + item end
-      return item
-    end
-    local result = typed_reduce('sum:0', args[1], {'number'}, fn)
-    if result == nil then return 0 end
-    return result
-  end
-
-  function fn_starts_with(args)
-    validate('starts_with', args, {{'array'}})
-    return string.sub(args[1], 1, string.len(args[2])) == args[2]
-  end
-
-  function fn_type(args)
-    -- Cannot get the length of a table with a single argument :$
-    if #args > 0 then validate_arity('type', #args, 1) end
-    return Functions.type(args[1])
-  end
-
-  function fn_to_number(args)
-    -- Cannot get the length of a table with a single argument :$
-    if #args > 0 then validate_arity('to_number', #args, 1) end
-    return tonumber(args[1])
-  end
-
-  function fn_to_string(args)
-    validate_arity('to_string:0', #args, 1)
-    if type(args[1]) == 'table' then
-      local meta = getmetatable(args[1])
-      if meta and meta.__tostring then
-        return tostring(args[1])
-      end
-      return json.encode(args[1])
-    end
-    return tostring(args[1])
-  end
-
-  function fn_values(args)
-    validate('values', args, {{'object'}})
-    local values = {}
-    for _, i in pairs(args[1]) do
-      values[#values + 1] = i
-    end
-    return values
-  end
-
-  function validate_arity(from, given, expected)
+  local function validate_arity(from, given, expected)
     if given ~= expected then
       error(from .. ' expects ' .. expected .. ' arguments. ' .. given
         .. ' were provided.')
     end
   end
 
-  function type_error(from, msg)
+  local function type_error(from, msg)
     if not string.match(from, ':') then
       error('Type error: ' .. from .. ' ' .. msg)
     end
     error('Argument ' .. from .. ' ' .. msg)
   end
 
-  function validate(from, args, types)
-    validate_arity(from, #args, #types)
-    for k, v in pairs(args) do
-      if types[k] and #types[k] then
-        validate_type(from .. ':' .. k, v, types[k])
-      end
-    end
-  end
-
-  function validate_type(from, value, types)
+  local function validate_type(from, value, types)
     if types[1] == 'any' then return end
     if Functions.in_table(Functions.type(value), types) then return end
     -- Account for empty tables and arrays being equivalent
@@ -878,7 +682,16 @@ local Functions = (function()
     type_error(from, msg);
   end
 
-  function validate_seq(from, types, a, b)
+  local function validate(from, args, types)
+    validate_arity(from, #args, #types)
+    for k, v in pairs(args) do
+      if types[k] and #types[k] then
+        validate_type(from .. ':' .. k, v, types[k])
+      end
+    end
+  end
+
+  local function validate_seq(from, types, a, b)
     local ta, tb = Functions.type(a), Functions.type(b)
     if ta ~= tb then
       type_error(from, 'encountered a type mismatch in sequence: ' .. ta .. ', ' .. tb)
@@ -897,7 +710,7 @@ local Functions = (function()
   -- @param table    tbl   Table to reduce
   -- @param table    types Valid types
   -- @param function func  Reduce function
-  function typed_reduce(from, tbl, types, func)
+  local function typed_reduce(from, tbl, types, func)
     return Functions.reduce(tbl, function (carry, item, index)
       if index > 1 then validate_seq(from, types, carry, item) end
       return func(carry, item, index)
@@ -908,7 +721,7 @@ local Functions = (function()
   -- @param string   from  'function:position'
   -- @param function expr  Function to wrap
   -- @param table    types Valid types
-  function wrap_expr(from, expr, types)
+  local function wrap_expr(from, expr, types)
     from = 'The expression return value of ' .. from
     return function (value)
       value = expr(value)
@@ -921,10 +734,197 @@ local Functions = (function()
   -- @param string|number a Left value
   -- @param string|number b Right value
   -- @return number
-  function sortfn(a, b)
+  local function sortfn(a, b)
     if a == b then return 0 end
     if a < b then return -1 end
     return 1
+  end
+
+  local function fn_abs(args)
+    validate('abs', args, {{'number'}})
+    return math.abs(args[1])
+  end
+
+  local function fn_sum(args)
+    validate('sum', args, {{'array'}})
+    local fn = function (carry, item, index)
+      if index > 1 then return carry + item end
+      return item
+    end
+    local result = typed_reduce('sum:0', args[1], {'number'}, fn)
+    if result == nil then return 0 end
+    return result
+  end
+
+  local function fn_avg(args)
+    validate('avg', args, {{'array'}})
+    if not #args[1] then return nil end
+    return fn_sum(args) / #args[1]
+  end
+
+  local function fn_ceil(args)
+    validate('ceil', args, {{'number'}})
+    return math.ceil(args[1])
+  end
+
+  local function fn_contains(args)
+    validate('contains', args, {{'string', 'array'}, {'any'}})
+    if type(args[1]) == 'table' then
+      return Functions.in_table(args[2], args[1])
+    end
+    return string.find(args[1], args[2]) ~= nil
+  end
+
+  local function fn_ends_with(args)
+    validate('ends_with', args, {{'string'}})
+    return args[2] == ''
+      or string.sub(args[1], -string.len(args[2])) == args[2]
+  end
+
+  local function fn_floor(args)
+    validate('floor', args, {{'number'}})
+    return math.floor(args[1])
+  end
+
+  local function fn_join(args)
+    validate('join', args, {{'string'}, {'array'}})
+    local fn = function (carry, item, index)
+      if index == 1 then return item end
+      return carry .. args[1] .. item
+    end
+    local result = typed_reduce('join:1', args[2], {'string'}, fn)
+    if result == nil then return '' end
+    return result
+  end
+
+  local function fn_keys(args)
+    validate('keys', args, {{'object'}})
+    local keys = {}
+    for k, _ in pairs(args[1]) do keys[#keys + 1] = k end
+    return keys
+  end
+
+  local function fn_length(args)
+    validate('length', args, {{'array', 'string', 'object'}})
+    local total = #args[1]
+    if total > 0 then return total end
+    if type(args[1]) == 'table' then
+      for _, _ in pairs(args[1]) do total = total + 1 end
+    end
+    return total
+  end
+
+  local function fn_not_null(args)
+    for _, i in pairs(args) do
+      if i ~= nil then return i end
+    end
+  end
+
+  local function fn_max(args)
+    validate('max', args, {{'array'}})
+    local fn = function (carry, item, index)
+      if index > 1 and carry >= item then return carry end
+      return item
+    end
+    return typed_reduce('max:0', args[1], {'number', 'string'}, fn)
+  end
+
+  local function fn_max_by(args)
+    validate('max_by', args, {{'array'}, {'expression'}})
+    local expr = wrap_expr('max_by:1', args[2], {'number', 'string'})
+    local fn = function (carry, item, index)
+      if index == 1 then return item end
+      if expr(carry) >= expr(item) then return carry end
+      return item
+    end
+    return typed_reduce('max_by:1', args[1], {'any'}, fn)
+  end
+
+  local function fn_min(args)
+    validate('min', args, {{'array'}})
+    local fn = function (carry, item, index)
+      if index > 1 and carry <= item then return carry end
+      return item
+    end
+    return typed_reduce('min:0', args[1], {'number', 'string'}, fn)
+  end
+
+  local function fn_min_by(args)
+    validate('min_by', args, {{'array'}, {'expression'}})
+    local expr = wrap_expr('min_by:1', args[2], {'number', 'string'})
+    local fn = function (carry, item, index)
+      if index == 1 then return item end
+      if expr(carry) <= expr(item) then return carry end
+      return item
+    end
+    return typed_reduce('min_by:1', args[1], {'any'}, fn)
+  end
+
+  local function fn_reverse(args)
+    validate('reverse', args, {{'array', 'string'}})
+    if type(args[1]) == 'string' then
+      return string.reverse(args[1])
+    end
+    local reversed, items = {}, #args[1]
+    for k, v in ipairs(args[1]) do reversed[items + 1 - k] = v end
+    return reversed
+  end
+
+  local function fn_sort(args)
+    validate('sort', args, {{'array'}})
+    local valid = {'string', 'number'}
+    return Functions.stable_sort(args[1], function (a, b)
+      validate_seq('sort:0', valid, a, b)
+      return sortfn(a, b)
+    end)
+  end
+
+  local function fn_sort_by(args)
+    validate('sort_by', args, {{'array'}, {'expression'}})
+    local expr, valid = args[2], {'string', 'number'}
+    return Functions.stable_sort(args[1], function (a, b)
+      local va, vb = expr(a), expr(b)
+      validate_seq('sort_by:0', valid, va, vb)
+      return sortfn(va, vb)
+    end)
+  end
+
+  local function fn_starts_with(args)
+    validate('starts_with', args, {{'array'}})
+    return string.sub(args[1], 1, string.len(args[2])) == args[2]
+  end
+
+  local function fn_type(args)
+    -- Cannot get the length of a table with a single argument :$
+    if #args > 0 then validate_arity('type', #args, 1) end
+    return Functions.type(args[1])
+  end
+
+  local function fn_to_number(args)
+    -- Cannot get the length of a table with a single argument :$
+    if #args > 0 then validate_arity('to_number', #args, 1) end
+    return tonumber(args[1])
+  end
+
+  local function fn_to_string(args)
+    validate_arity('to_string:0', #args, 1)
+    if type(args[1]) == 'table' then
+      local meta = getmetatable(args[1])
+      if meta and meta.__tostring then
+        return tostring(args[1])
+      end
+      return json.encode(args[1])
+    end
+    return tostring(args[1])
+  end
+
+  local function fn_values(args)
+    validate('values', args, {{'object'}})
+    local values = {}
+    for _, i in pairs(args[1]) do
+      values[#values + 1] = i
+    end
+    return values
   end
 
   --- Check if the search value is in table t
