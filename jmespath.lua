@@ -1029,37 +1029,21 @@ local Functions = (function()
     return true
   end
 
+  -- Create a hash table of available function names in the local scope.
+  local jp_fns, idx = {}, 1
+  repeat
+    local ln, lv = debug.getlocal(1, idx)
+    if ln ~= nil and ln:sub(1, 3) == 'fn_' then jp_fns[ln] = lv end
+    idx = idx + 1
+  until ln == nil
+
   function Functions.new(config)
-    local fns = {
-      abs = fn_abs,
-      avg = fn_avg,
-      ceil = fn_ceil,
-      contains = fn_contains,
-      ends_with = fn_ends_with,
-      floor = fn_floor,
-      keys = fn_keys,
-      length = fn_length,
-      join = fn_join,
-      not_null = fn_not_null,
-      max = fn_max,
-      max_by = fn_max_by,
-      min = fn_min,
-      min_by = fn_min_by,
-      reverse = fn_reverse,
-      sort = fn_sort,
-      sort_by = fn_sort_by,
-      starts_with = fn_starts_with,
-      sum = fn_sum,
-      to_number = fn_to_number,
-      to_string = fn_to_string,
-      type = fn_type,
-      values = fn_values
-    }
     return setmetatable({}, {
       __index = Functions,
       __call = function(t, fn, args)
-        if not fns[fn] then error('Invalid function call: ' .. fn) end
-        return fns[fn](args)
+        local fn_idx = 'fn_' .. fn
+        if not jp_fns[fn_idx] then error('Invalid function call: ' .. fn) end
+        return jp_fns[fn_idx](args)
       end
     })
   end
