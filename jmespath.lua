@@ -745,21 +745,48 @@ local Functions = (function()
     return math.abs(args[1])
   end
 
+  local function fn_all(args)
+    validate('all', args, {{'array'}, {'expression'}})
+    for _, v in pairs(args[1]) do
+      if args[2](v) == nill then return false end
+    end
+    return true
+  end
+
+  local function fn_any(args)
+    validate('any', args, {{'array'}, {'expression'}})
+    for _, v in pairs(args[1]) do
+      if args[2](v) ~= nill then return true end
+    end
+    return false
+  end
+
+  local function sum_reducer(carry, item)
+    return (carry or 0) + item
+  end
+
   local function fn_sum(args)
     validate('sum', args, {{'array'}})
+    return typed_reduce('sum:0', args[1], {'number'}, sum_reducer) or 0
+  end
+
+  local function fn_sum_by(args)
+    validate('sum_by', args, {{'array'}, {'expression'}})
+    local expr = wrap_expr('sum_by:1', args[2], {'number'})
     local fn = function (carry, item, index)
-      if index > 1 then return carry + item end
-      return item
+      return sum_reducer(carry, expr(item))
     end
-    local result = typed_reduce('sum:0', args[1], {'number'}, fn)
-    if result == nil then return 0 end
-    return result
+    return Functions.reduce(args[1], fn) or 0
   end
 
   local function fn_avg(args)
     validate('avg', args, {{'array'}})
-    if not #args[1] then return nil end
-    return fn_sum(args) / #args[1]
+    return (#args[1] > 0 and fn_sum(args) / #args[1]) or nil
+  end
+
+  local function fn_avg_by(args)
+    validate('avg', args, {{'array'}, {'expression'}})
+    return (#args[1] > 0 and fn_sum_by(args) / #args[1]) or nil
   end
 
   local function fn_ceil(args)
