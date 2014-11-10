@@ -401,7 +401,7 @@ local Parser = (function()
 
   parselets.nud_expref = function(parser)
     parser:advance()
-    return {type = 'expref', children = {expr(parser, 2)}}
+    return {type = 'expref', children = {expr(parser, bp.expref)}}
   end
 
   local function parse_kvp(parser)
@@ -593,12 +593,12 @@ local Parser = (function()
   end
 
   parselets.led_comparator = function(parser, left)
-    local token = parser.token
+    local comp = parser.token.value
     parser:advance()
     return {
       type     = 'comparator',
-      value    = token.value,
-      children = {left, expr(parser)}
+      value    = comp,
+      children = {left, expr(parser, bp.comparator)}
     }
   end
 
