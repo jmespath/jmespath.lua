@@ -620,4 +620,60 @@
       ]
     }
   ]
+}, {
+  "given":
+  {
+    "people": [
+         {"age": 29, "name": "Michael", "job": "SDE"},
+         {"age": 35, "name": "Brian", "job": "Student"},
+         {"age": 29, "name": "Shannon", "job": "Teacher"},
+         {"age": 31, "name": "April", "job": "Teacher"}
+    ]
+  },
+  "cases": [
+    {
+      "expression": "sum_by(people, &age)",
+      "result": 124
+    },
+    {
+      "expression": "sum_by(people, &name)",
+      "error": "invalid-type"
+    },
+    {
+      "expression": "avg_by(people, &age)",
+      "result": 31
+    },
+    {
+      "expression": "avg_by(people, &name)",
+      "error": "invalid-type"
+    },
+    {
+      "expression": "all(people, &age)",
+      "result": true
+    },
+    {
+      "expression": "all(people, &foo)",
+      "result": false
+    },
+    {
+      "expression": "all(people, &age)",
+      "result": true
+    },
+    {
+      "expression": "all(people, `test`)",
+      "error": "invalid-type"
+    },
+    {
+      "expression": "any(people, &age)",
+      "result": true
+    },
+    {
+      "expression": "any(people, &foo)",
+      "result": false
+    },
+    {
+      "expression": "any(people, `test`)",
+      "error": "invalid-type"
+    }
+  ]
 }]
