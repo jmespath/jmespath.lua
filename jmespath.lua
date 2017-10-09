@@ -55,7 +55,6 @@ local Lexer = (function()
         ['(']  = 'lparen',
         [')']  = 'rparen',
         ['@']  = 'current',
-        ['&']  = 'expref'
       },
       -- Tokens that can be numbers
       numbers = {
@@ -178,6 +177,16 @@ local Lexer = (function()
     return {type = 'or', value = '||', pos = lexer.pos - 2};
   end
 
+  --- Consumes an and, '&&', and expref, '&' token
+  local function consume_amp(lexer)
+    consume(lexer)
+    if lexer.c ~= '&' then
+      return {type = 'expref', value = '&', pos = lexer.pos - 1};
+    end
+    consume(lexer)
+    return {type = 'and', value = '&&', pos = lexer.pos - 2};
+  end
+
   --- Parse a string of tokens inside of a delimiter.
   -- @param   lexer   Lexer instance
   -- @param   wrapper Wrapping character
@@ -265,6 +274,8 @@ local Lexer = (function()
         tokens[#tokens + 1] = consume_operator(self)
       elseif self.c == '|' then
         tokens[#tokens + 1] = consume_pipe(self)
+      elseif self.c == '&' then
+        tokens[#tokens + 1] = consume_amp(self)
       elseif self.c == '"' then
         tokens[#tokens + 1] = consume_quoted_identifier(self)
       elseif self.c == '`' then
@@ -341,7 +352,8 @@ local Parser = (function()
     pipe              = 1,
     comparator        = 2,
     ['or']            = 5,
-    flatten           = 6,
+    ['and']           = 6,
+    flatten           = 7,
     star              = 20,
     dot               = 40,
     lbrace            = 50,
@@ -557,6 +569,11 @@ local Parser = (function()
   parselets.led_or = function(parser, left)
     parser:advance()
     return {type = 'or', children = {left, expr(parser, bp['or'])}}
+  end
+
+  parselets.led_and = function(parser, left)
+    parser:advance()
+    return {type = 'and', children = {left, expr(parser, bp['and'])}}
   end
 
   parselets.led_pipe = function(parser, left)
@@ -1168,6 +1185,16 @@ local Interpreter = (function()
         result = interpreter:visit(node.children[2], data)
       end
       return result
+    end,
+
+    ["and"] = function(interpreter, node, data)
+      local result = interpreter:visit(node.children[1], data)
+      local t = type(result)
+      if not result or result == '' or (t == 'table' and next(result) == nil)
+      then
+	 return result
+      end
+      return interpreter:visit(node.children[2], data)
     end,
 
     pipe = function(interpreter, node, data)
