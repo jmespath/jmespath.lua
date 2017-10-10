@@ -428,6 +428,16 @@ local Parser = (function()
     return parselets.led_flatten(parser, current_node)
   end
 
+  parselets.nud_lparen = function(parser)
+     parser:advance()
+     local e = expr(parser, 0)
+     if parser.token.type ~= 'rparen' then
+      throw(parser, 'Expected a closing rparen')
+     end
+     parser:advance()
+     return e
+  end
+
   parselets.nud_filter = function(parser)
     return parselets.led_filter(parser, current_node)
   end
